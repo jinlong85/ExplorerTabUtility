@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Text.Json;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
@@ -204,6 +205,25 @@ public static class SettingsManager
         }
     }
 
+    /// <summary>
+    /// Tab groups (folders opened together as tabs). Old settings files without "TabGroups" load as an empty list.
+    /// </summary>
+    public static List<TabGroup> TabGroups
+    {
+        get
+        {
+            var groups = Settings.TabGroups ??= [];
+            // Repair entries from a hand-edited / partial settings file.
+            groups.RemoveAll(g => g == null);
+            foreach (var group in groups)
+            {
+                group.Paths ??= [];
+                group.Name ??= string.Empty;
+            }
+            return groups;
+        }
+    }
+
     public static void SaveSettings()
     {
         try
@@ -235,4 +255,5 @@ internal class AppSettings
     public bool RestorePreviousWindows { get; set; }
     public WindowRecord[]? ClosedWindows { get; set; }
     public string? Language { get; set; } = string.Empty;
+    public List<TabGroup>? TabGroups { get; set; }
 }

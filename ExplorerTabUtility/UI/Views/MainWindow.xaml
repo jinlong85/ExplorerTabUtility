@@ -110,6 +110,9 @@
                                 <ListBoxItem ToolTip="{DynamicResource Main_NavShortcutsToolTip}">
                                     <TextBlock VerticalAlignment="Center"><Run Text="&#x1F5F2;  " /><Run Text="{DynamicResource Main_NavShortcuts}" /></TextBlock>
                                 </ListBoxItem>
+                                <ListBoxItem ToolTip="{DynamicResource Main_NavTabGroupsToolTip}">
+                                    <TextBlock VerticalAlignment="Center"><Run Text="&#xE8B7;  " /><Run Text="{DynamicResource Main_NavTabGroups}" /></TextBlock>
+                                </ListBoxItem>
                                 <ListBoxItem ToolTip="{DynamicResource Main_NavPreferencesToolTip}">
                                     <TextBlock VerticalAlignment="Center"><Run Text="&#xE713;  " /><Run Text="{DynamicResource Main_NavPreferences}" /></TextBlock>
                                 </ListBoxItem>
@@ -202,6 +205,11 @@
                                         <StackPanel x:Name="ProfilesPanel" />
                                     </ScrollViewer>
                                 </Grid>
+                            </TabItem>
+
+                            <!-- Tab Groups Tab -->
+                            <TabItem Header="{DynamicResource Main_NavTabGroups}" Visibility="Collapsed">
+                                <local:TabGroupsView x:Name="TabGroupsPage" />
                             </TabItem>
 
                             <!-- Preferences Tab -->

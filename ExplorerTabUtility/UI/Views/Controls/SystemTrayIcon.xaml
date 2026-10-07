@@ -82,6 +82,16 @@
                     </MenuItem.Icon>
                 </MenuItem>
 
+                <!-- Tab groups (items are added in code-behind when the menu opens) -->
+                <MenuItem x:Name="TabGroupsMenu"
+                          Header="{DynamicResource Tray_TabGroups}"
+                          ToolTip="{DynamicResource Tray_TabGroupsToolTip}">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#xE8B7;" FontSize="14" />
+                    </MenuItem.Icon>
+                    <MenuItem Header="{DynamicResource Tray_TabGroupsNone}" IsEnabled="False" />
+                </MenuItem>
+
                 <Separator />
 
                 <!-- Add to startup -->

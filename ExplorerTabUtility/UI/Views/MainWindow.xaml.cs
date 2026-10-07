@@ -32,7 +32,8 @@ public partial class MainWindow : Window
 
         _profileManager = new ProfileManager(ProfilesPanel);
         _hookManager = new HookManager(_profileManager);
-        _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow);
+        _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow, ShowTabGroupsPage);
+        TabGroupsPage.Initialize(_hookManager);
 
         // Fix the "start with Windows" entry if the app was moved, then show the real registry state
         RegistryManager.RepairStartupPath();
@@ -121,6 +122,14 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(Show);
         WinApi.RestoreWindowToForeground(_handle);
     }
+
+    private void ShowTabGroupsPage()
+    {
+        Dispatcher.Invoke(() => NavigationList.SelectedIndex = TabGroupsPageIndex);
+        ShowWindow();
+    }
+
+    private const int TabGroupsPageIndex = 1; // Order of the navigation list: Shortcuts, Tab groups, Preferences, About
 
     private void HideWindow(bool exit = false)
     {

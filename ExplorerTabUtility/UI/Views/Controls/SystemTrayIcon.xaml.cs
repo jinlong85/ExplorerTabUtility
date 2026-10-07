@@ -18,11 +18,13 @@ public partial class SystemTrayIcon : UserControl, IDisposable
     private readonly ProfileManager _profileManager;
     private readonly HookManager _hookManager;
     private readonly Action _showWindowAction;
+    private readonly Action? _showTabGroupsAction;
     private ICommand ProfileItemCommand { get; set; } = null!;
     private bool _savedReuseTabsState;
 
-    public SystemTrayIcon(ProfileManager profileManager, HookManager hookManager, Action showWindowAction)
+    public SystemTrayIcon(ProfileManager profileManager, HookManager hookManager, Action showWindowAction, Action? showTabGroupsAction = null)
     {
+        _showTabGroupsAction = showTabGroupsAction;
         InitializeComponent();
         InitializeCommands();
 
@@ -42,7 +44,11 @@ public partial class SystemTrayIcon : UserControl, IDisposable
 
         // Keep "Add to startup" in sync with the registry (it can be changed from Preferences, Task Manager, ...)
         if (TrayIcon.ContextMenu != null)
-            TrayIcon.ContextMenu.Opened += (_, _) => RefreshStartupMenuItem();
+            TrayIcon.ContextMenu.Opened += (_, _) =>
+            {
+                RefreshStartupMenuItem();
+                PopulateTabGroupsMenu();
+            };
         RegistryManager.StartupChanged += _ => Dispatcher.BeginInvoke(new Action(RefreshStartupMenuItem));
     }
 
@@ -195,6 +201,64 @@ public partial class SystemTrayIcon : UserControl, IDisposable
             WindowHook.IsChecked = true;
             WindowHook.Command.Execute(WindowHook.CommandParameter);
         }
+    }
+
+    /// <summary>Tab groups submenu: one item per group, then "Save current window as group" and "Manage tab groups...".</summary>
+    private void PopulateTabGroupsMenu()
+    {
+        TabGroupsMenu.Items.Clear();
+
+        var groups = TabGroupManager.Groups.ToList();
+        if (groups.Count == 0)
+            TabGroupsMenu.Items.Add(new MenuItem { Header = Loc.Get("Tray_TabGroupsNone"), IsEnabled = false });
+
+        foreach (var group in groups)
+        {
+            var item = new MenuItem
+            {
+                Header = group.Name.Replace("_", "__"), // "_" would be treated as an access key
+                ToolTip = group.Paths.Count == 0
+                    ? Loc.Format("TabGroups_EmptyGroup", group.Name)
+                    : string.Join(Environment.NewLine, group.Paths),
+                Command = new RelayCommand(_ => OpenTabGroup(group))
+            };
+            TabGroupsMenu.Items.Add(item);
+        }
+
+        TabGroupsMenu.Items.Add(new Separator());
+        TabGroupsMenu.Items.Add(new MenuItem
+        {
+            Header = Loc.Get("Tray_SaveWindowAsGroup"),
+            ToolTip = Loc.Get("Tray_SaveWindowAsGroupToolTip"),
+            Command = new RelayCommand(_ => SaveWindowAsTabGroup())
+        });
+        TabGroupsMenu.Items.Add(new MenuItem
+        {
+            Header = Loc.Get("Tray_ManageTabGroups"),
+            Command = new RelayCommand(_ => (_showTabGroupsAction ?? _showWindowAction)())
+        });
+    }
+
+    private async void OpenTabGroup(TabGroup group)
+    {
+        try
+        {
+            // Clicking the tray icon makes the taskbar the foreground window, so the most recently used Explorer window is used.
+            await _hookManager.OpenTabGroupAsync(group);
+        }
+        catch
+        {
+            // Explorer might have been restarted meanwhile.
+        }
+    }
+
+    private void SaveWindowAsTabGroup()
+    {
+        var group = _hookManager.SaveWindowAsTabGroup();
+        if (group == null) return;
+
+        TrayIcon.ShowBalloonTip(Loc.Get("App_Title"), Loc.Format("TabGroups_Captured", group.Paths.Count, group.Name),
+            Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }
 
     private void ToggleStartup()

@@ -1,0 +1,110 @@
+<UserControl x:Class="ExplorerTabUtility.UI.Views.TabGroupsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             TextBlock.Foreground="{StaticResource TextPrimaryBrush}"
+             TextElement.Foreground="{StaticResource TextPrimaryBrush}">
+
+    <UserControl.Resources>
+        <!-- Same look as the navigation list, a bit more compact -->
+        <Style x:Key="TabGroupListItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource NavigationListBoxItemStyle}">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Margin" Value="2,1" />
+        </Style>
+        <Style x:Key="TabGroupListBoxStyle" TargetType="ListBox" BasedOn="{StaticResource NavigationListBoxStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource TabGroupListItemStyle}" />
+        </Style>
+        <Style x:Key="ListFrameStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource ControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Margin" Value="0,4" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="16,8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" MinWidth="180" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="5*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Groups -->
+        <DockPanel Grid.Column="0">
+            <WrapPanel DockPanel.Dock="Top">
+                <Button x:Name="BtnNewGroup" Content="{DynamicResource TabGroups_New}" Style="{StaticResource FlatButtonStyle}"
+                        ToolTip="{DynamicResource TabGroups_NewToolTip}" />
+                <Button x:Name="BtnCaptureGroup" Content="{DynamicResource TabGroups_Capture}" Style="{StaticResource FlatButtonStyle}"
+                        ToolTip="{DynamicResource TabGroups_CaptureToolTip}" />
+            </WrapPanel>
+            <WrapPanel DockPanel.Dock="Bottom">
+                <Button x:Name="BtnDeleteGroup" Content="{DynamicResource TabGroups_Delete}" Style="{StaticResource FlatButtonStyle}"
+                        ToolTip="{DynamicResource TabGroups_DeleteToolTip}" />
+            </WrapPanel>
+            <Border Style="{StaticResource ListFrameStyle}">
+                <Grid>
+                    <ListBox x:Name="LstGroups" Style="{StaticResource TabGroupListBoxStyle}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"><Run Text="{Binding Paths.Count, Mode=OneWay}" /><Run Text=" " /><Run Text="{DynamicResource TabGroups_FolderCountSuffix}" /></TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock x:Name="TxtNoGroups" Text="{DynamicResource TabGroups_Empty}" TextWrapping="Wrap" Margin="10"
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" IsHitTestVisible="False" />
+                </Grid>
+            </Border>
+        </DockPanel>
+
+        <!-- Selected group -->
+        <Grid Grid.Column="2">
+            <TextBlock x:Name="TxtSelectHint" Text="{DynamicResource TabGroups_SelectHint}" TextWrapping="Wrap"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="4,10" />
+
+            <DockPanel x:Name="EditorPanel" Visibility="Collapsed">
+                <!-- Name + open -->
+                <DockPanel DockPanel.Dock="Top">
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource TabGroups_Name}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                    <Button DockPanel.Dock="Right" x:Name="BtnOpenGroup" Content="{DynamicResource TabGroups_Open}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_OpenToolTip}" />
+                    <TextBox x:Name="TxtGroupName" Tag="{DynamicResource TabGroups_NamePlaceholder}" Style="{StaticResource CustomTextBoxStyle}"
+                             ContextMenu="{StaticResource TextBoxCustomContextMenu}" />
+                </DockPanel>
+
+                <TextBlock DockPanel.Dock="Top" Text="{DynamicResource TabGroups_Folders}" Margin="0,8,0,0"
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" />
+
+                <!-- Add a folder -->
+                <DockPanel DockPanel.Dock="Bottom">
+                    <Button DockPanel.Dock="Right" x:Name="BtnBrowse" Content="{DynamicResource TabGroups_Browse}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_BrowseToolTip}" />
+                    <Button DockPanel.Dock="Right" x:Name="BtnAddPath" Content="{DynamicResource TabGroups_Add}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_AddToolTip}" />
+                    <TextBox x:Name="TxtNewPath" Tag="{DynamicResource TabGroups_PathPlaceholder}" Style="{StaticResource CustomTextBoxStyle}"
+                             ContextMenu="{StaticResource TextBoxCustomContextMenu}" ToolTip="{DynamicResource TabGroups_PathToolTip}" />
+                </DockPanel>
+
+                <!-- Reorder / remove -->
+                <StackPanel DockPanel.Dock="Right" Margin="4,4,0,4">
+                    <Button x:Name="BtnMoveUp" Content="{DynamicResource TabGroups_MoveUp}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_MoveUpToolTip}" />
+                    <Button x:Name="BtnMoveDown" Content="{DynamicResource TabGroups_MoveDown}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_MoveDownToolTip}" />
+                    <Button x:Name="BtnRemovePath" Content="{DynamicResource TabGroups_Remove}" Style="{StaticResource FlatButtonStyle}"
+                            ToolTip="{DynamicResource TabGroups_RemoveToolTip}" />
+                </StackPanel>
+
+                <!-- Folders (drop folders here from File Explorer) -->
+                <Border Style="{StaticResource ListFrameStyle}">
+                    <ListBox x:Name="LstPaths" Style="{StaticResource TabGroupListBoxStyle}" AllowDrop="True"
+                             ToolTip="{DynamicResource TabGroups_FoldersToolTip}" />
+                </Border>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -41,6 +41,9 @@ public static class WinApi
     [DllImport("user32.dll")]
     public static extern nint GetParent(nint hWnd);
 
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(nint hWnd);
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern nint FindWindow(string lpClassName, string? lpWindowName);
 
