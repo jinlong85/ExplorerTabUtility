@@ -325,6 +325,174 @@ public class ExplorerWatcher : IHook
         }
     }
 
+    // ---- Tab groups ----
+
+    /// <summary>
+    /// Opens <paramref name="locations"/> (in order) as tabs in ONE Explorer window:
+    /// <paramref name="preferredWindow"/> if it is an Explorer window, otherwise the most recently used Explorer window,
+    /// otherwise a new window (the first location) to which the rest is added as tabs.
+    /// With "Reuse tabs" on, a location that is already open in that window is not opened a second time.
+    /// Returns the locations that don't exist (they are skipped).
+    /// </summary>
+    public async Task<List<string>> OpenTabGroup(IReadOnlyList<string> locations, nint preferredWindow = 0)
+    {
+        var missing = new List<string>();
+        var toOpen = new List<string>();
+        foreach (var rawLocation in locations)
+        {
+            if (string.IsNullOrWhiteSpace(rawLocation)) continue;
+
+            var location = Helper.NormalizeLocation(rawLocation);
+            if (!LocationExists(location))
+                missing.Add(rawLocation);
+            else if (!toOpen.Any(l => IsSameLocation(l, location)))
+                toOpen.Add(location);
+        }
+
+        if (toOpen.Count == 0) return missing;
+
+        var window = Helper.IsFileExplorerWindow(preferredWindow) ? preferredWindow : GetMostRecentExplorerWindow();
+        var startIndex = 0;
+        if (window == 0)
+        {
+            // No Explorer window yet: open the first folder in a new window, the others become its tabs.
+            var currentWindows = Helper.GetAllExplorerWindows().ToArray();
+            await OpenNewWindowWithSelection(new WindowRecord(toOpen[0]));
+            window = await Helper.ListenForNewExplorerWindowAsync(currentWindows, 5_000);
+            if (window == 0) return missing;
+
+            // New tabs are requested through an existing tab, so wait until the window has one.
+            await Helper.DoUntilNotDefaultAsync(() => WinApi.FindWindowEx(window, 0, "ShellTabWindowClass", null), 3_000, 50);
+            startIndex = 1;
+        }
+
+        var openedCount = startIndex;
+        nint firstExistingTab = 0;
+        for (var i = startIndex; i < toOpen.Count; i++)
+        {
+            var location = toOpen[i];
+            if (_reuseTabs)
+            {
+                var existingTab = FindTabInWindow(window, location);
+                if (existingTab != 0)
+                {
+                    if (i == 0) firstExistingTab = existingTab;
+                    continue;
+                }
+            }
+
+            // isDuplicate: true skips the global "reuse tabs" lookup, which would jump to a tab in ANOTHER window;
+            // the per-window check above is used instead.
+            await OpenTabNavigateWithSelection(new WindowRecord(location, window), window, isDuplicate: true);
+            openedCount++;
+        }
+
+        // Everything was already open: at least show the group's first folder.
+        if (openedCount == 0 && firstExistingTab != 0)
+            await SelectTabByHandle(window, firstExistingTab);
+
+        WinApi.RestoreWindowToForeground(window);
+        return missing;
+    }
+
+    /// <summary>
+    /// Locations and names of all tabs of <paramref name="window"/> (or of the most recently used Explorer window),
+    /// in the order Explorer registered them (usually the order of the tabs, unless tabs were dragged around).
+    /// </summary>
+    public List<(string Location, string Name)> GetWindowTabs(nint window = 0)
+    {
+        var result = new List<(string Location, string Name)>();
+        if (!Helper.IsFileExplorerWindow(window))
+            window = GetMostRecentExplorerWindow();
+        if (window == 0 || _shellWindows == null) return result;
+
+        try
+        {
+            var count = _shellWindows.Count;
+            for (var i = 0; i < count; i++)
+            {
+                try
+                {
+                    if (_shellWindows.Item(i) is not InternetExplorer tab) continue;
+                    if (new IntPtr(tab.HWND) != window) continue;
+
+                    var location = GetLocation(tab);
+                    if (string.IsNullOrWhiteSpace(location) || result.Any(r => IsSameLocation(r.Location, location)))
+                        continue;
+
+                    result.Add((location, tab.LocationName ?? string.Empty));
+                }
+                catch
+                {
+                    // The tab might have been closed meanwhile.
+                }
+            }
+        }
+        catch
+        {
+            // Explorer restarted
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Top-level windows are enumerated in Z-order (topmost first), so the first visible Explorer window
+    /// with a tab is the one the user used last.
+    /// </summary>
+    private static nint GetMostRecentExplorerWindow()
+    {
+        return Helper.GetAllExplorerWindows().FirstOrDefault(h =>
+            WinApi.IsWindowVisible(h) &&
+            !Helper.HiddenWindows.ContainsKey(h) &&
+            WinApi.FindWindowEx(h, 0, "ShellTabWindowClass", null) != 0);
+    }
+
+    private nint FindTabInWindow(nint window, string location)
+    {
+        foreach (var tabHandle in Helper.GetAllExplorerTabs(window))
+        {
+            var tab = GetWindowByTabHandle(tabHandle);
+            if (tab == null) continue;
+            try
+            {
+                var tabLocation = _windowEntryDict.TryGetValue(tab, out WindowEntry entry) && entry.Value.Location != null
+                    ? entry.Value.Location
+                    : GetLocation(tab);
+                if (IsSameLocation(location, tabLocation)) return tabHandle;
+            }
+            catch
+            {
+                // The tab might have been closed meanwhile.
+            }
+        }
+
+        return 0;
+    }
+
+    private bool LocationExists(string location)
+    {
+        try
+        {
+            if (location.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+                location = new Uri(location).LocalPath;
+
+            if (!location.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) && System.IO.Path.IsPathRooted(location))
+                return System.IO.Directory.Exists(location);
+
+            // Shell locations (shell:Downloads, shell:::{CLSID}, ...): ask the shell whether it can resolve them.
+            if (_shellPathComparer == null) return true;
+            var pidl = _shellPathComparer.GetPidlFromPath(location);
+            if (pidl == 0) return false;
+            Marshal.FreeCoTaskMem(pidl);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void PreventWindowHiding(nint hWnd)
     {
         if (_processedHWnds.TryAdd(hWnd, 0))

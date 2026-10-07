@@ -91,6 +91,10 @@
                          ContextMenu="{StaticResource TextBoxCustomContextMenu}"
                          ToolTip="{DynamicResource Profile_LocationToolTip}" />
 
+                <!-- Tab group (replaces the path box for the "Open tab group" action) -->
+                <ComboBox Grid.Column="0" x:Name="CbTabGroup" Style="{StaticResource CustomComboBoxStyle}" Visibility="Collapsed"
+                          ToolTip="{DynamicResource Profile_TabGroupToolTip}" />
+
                 <!-- Delay -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6"
                             ToolTip="{DynamicResource Profile_DelayToolTip}">

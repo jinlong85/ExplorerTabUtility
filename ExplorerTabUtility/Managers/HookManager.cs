@@ -7,7 +7,10 @@ using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Hooks;
 using ExplorerTabUtility.WinAPI;
+using System.Linq;
+using MessageBoxImage = System.Windows.MessageBoxImage;
 using ExplorerTabUtility.UI.Views;
+using ExplorerTabUtility.Localization;
 
 namespace ExplorerTabUtility.Managers;
 
@@ -98,6 +101,19 @@ public sealed class HookManager
                 _syncContext.Post(_ => new TabSearchPopup(_windowHook).Show(), null);
                 break;
 
+            case HotKeyAction.OpenTabGroup:
+                var group = TabGroupManager.Find(e.Profile.Path);
+                if (group == null)
+                {
+                    ShowMessage(Loc.Get("TabGroups_NotFound"), MessageBoxImage.Warning);
+                    break;
+                }
+
+                if (e.Profile.Delay > 0)
+                    await Task.Delay(e.Profile.Delay);
+                await OpenTabGroupAsync(group, e.ForegroundWindow);
+                break;
+
             case HotKeyAction.SnapRight:
             case HotKeyAction.SnapLeft:
             case HotKeyAction.SnapUp:
@@ -112,6 +128,48 @@ public sealed class HookManager
                     @"Invalid profile action");
         }
     }
+    /// <summary>
+    /// Opens all folders of <paramref name="group"/> as tabs in one Explorer window
+    /// (<paramref name="foregroundWindow"/> if it is an Explorer window, otherwise the most recently used one, otherwise a new window).
+    /// Folders that don't exist are skipped and listed in a message.
+    /// </summary>
+    public async Task OpenTabGroupAsync(TabGroup group, nint foregroundWindow = 0)
+    {
+        var paths = group.Paths.ToArray();
+        if (paths.Length == 0)
+        {
+            ShowMessage(Loc.Format("TabGroups_EmptyGroup", group.Name), MessageBoxImage.Information);
+            return;
+        }
+
+        var missing = await _windowHook.OpenTabGroup(paths, foregroundWindow);
+        if (missing.Count > 0)
+            ShowMessage(Loc.Format("TabGroups_MissingPaths", string.Join(Environment.NewLine, missing)), MessageBoxImage.Warning);
+    }
+
+    /// <summary>
+    /// Creates a new group from the tabs of <paramref name="explorerWindow"/> (or the most recently used Explorer window).
+    /// Must be called on the UI thread. Returns null (after telling the user) when there is no Explorer window.
+    /// </summary>
+    public TabGroup? SaveWindowAsTabGroup(nint explorerWindow = 0)
+    {
+        var tabs = _windowHook.GetWindowTabs(explorerWindow);
+        if (tabs.Count == 0)
+        {
+            CustomMessageBox.Show(Loc.Get("TabGroups_NoExplorerWindow"), Loc.Get("App_Title"), icon: MessageBoxImage.Information);
+            return null;
+        }
+
+        var firstName = string.IsNullOrWhiteSpace(tabs[0].Name) ? tabs[0].Location : tabs[0].Name;
+        var name = tabs.Count == 1 ? firstName : Loc.Format("TabGroups_CapturedName", firstName, tabs.Count - 1);
+        return TabGroupManager.Add(name, tabs.Select(t => t.Location));
+    }
+
+    private void ShowMessage(string message, MessageBoxImage icon)
+    {
+        _syncContext.Post(_ => CustomMessageBox.Show(message, Loc.Get("App_Title"), icon: icon), null);
+    }
+
     private void KeybindingStarted()
     {
         StopMouseHook();

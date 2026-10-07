@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Collections.Generic;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
+using ExplorerTabUtility.Managers;
 using ExplorerTabUtility.Localization;
 using H.Hooks;
 
@@ -22,6 +23,8 @@ public partial class HotKeyProfileControl : UserControl
     private readonly Action? _keybindingHookStopped;
     private LowLevelKeyboardHook? _lowLevelKeyboardHook;
     private LowLevelMouseHook? _lowLevelMouseHook;
+    private HotKeyAction _previousAction;
+    private bool _isUpdatingTabGroups;
 
     // Properties
     public new bool IsEnabled
@@ -62,6 +65,9 @@ public partial class HotKeyProfileControl : UserControl
         CbAction.SelectedItem = _profile.Action;
 
         TxtPath.Text = _profile.Path ?? string.Empty;
+        _previousAction = _profile.Action;
+        RefreshTabGroupComboBox();
+        UpdateParameterControls();
         NDelay.Value = _profile.Delay;
         CbHandled.IsChecked = _profile.IsHandled;
         CbOpenAsTab.IsChecked = _profile.IsAsTab;
@@ -84,6 +90,10 @@ public partial class HotKeyProfileControl : UserControl
 
         // Additional controls
         TxtPath.TextChanged += TxtPath_TextChanged;
+        CbTabGroup.SelectionChanged += CbTabGroup_SelectionChanged;
+        // Keep the group list up to date while this control is shown (groups are edited on the "Tab groups" page).
+        Loaded += (_, _) => { TabGroupManager.GroupsChanged -= RefreshTabGroupComboBox; TabGroupManager.GroupsChanged += RefreshTabGroupComboBox; RefreshTabGroupComboBox(); };
+        Unloaded += (_, _) => TabGroupManager.GroupsChanged -= RefreshTabGroupComboBox;
         NDelay.ValueChanged += NDelayValueChanged;
         CbHandled.Checked += CbHandled_CheckedChanged;
         CbHandled.Unchecked += CbHandled_CheckedChanged;
@@ -102,7 +112,45 @@ public partial class HotKeyProfileControl : UserControl
     }
 
     private void CbAction_SelectedIndexChanged(object _, SelectionChangedEventArgs __) => UpdateAction();
-    private void TxtPath_TextChanged(object _, TextChangedEventArgs __) => _profile.Path = TxtPath.Text;
+    private void TxtPath_TextChanged(object _, TextChangedEventArgs __)
+    {
+        if (_profile.Action != HotKeyAction.OpenTabGroup)
+            _profile.Path = TxtPath.Text;
+    }
+
+    // For the "Open tab group" action the profile's Path stores the id of the selected group.
+    private void CbTabGroup_SelectionChanged(object _, SelectionChangedEventArgs __)
+    {
+        if (_isUpdatingTabGroups || _profile.Action != HotKeyAction.OpenTabGroup) return;
+        if (CbTabGroup.SelectedItem is TabGroup group)
+            _profile.Path = group.Id.ToString();
+    }
+
+    private void RefreshTabGroupComboBox()
+    {
+        _isUpdatingTabGroups = true;
+        try
+        {
+            var groups = TabGroupManager.Groups.ToList();
+            CbTabGroup.ItemsSource = groups;
+            CbTabGroup.SelectedItem = _profile.Action == HotKeyAction.OpenTabGroup
+                ? TabGroupManager.Find(_profile.Path)
+                : null;
+        }
+        finally
+        {
+            _isUpdatingTabGroups = false;
+        }
+    }
+
+    // Shows the path box or the tab group list, depending on the action.
+    private void UpdateParameterControls()
+    {
+        var isTabGroup = _profile.Action == HotKeyAction.OpenTabGroup;
+        TxtPath.Visibility = isTabGroup ? Visibility.Collapsed : Visibility.Visible;
+        CbTabGroup.Visibility = isTabGroup ? Visibility.Visible : Visibility.Collapsed;
+        CbTabGroup.IsEnabled = isTabGroup && (CbEnabled.IsChecked ?? false);
+    }
     private void NDelayValueChanged(object? _, RoutedPropertyChangedEventArgs<double> e) => _profile.Delay = (int)e.NewValue;
     private void CbHandled_CheckedChanged(object _, RoutedEventArgs __) => _profile.IsHandled = CbHandled.IsChecked ?? true;
     private void CbOpenAsTab_CheckedChanged(object _, RoutedEventArgs __) => _profile.IsAsTab = CbOpenAsTab.IsChecked ?? true;
@@ -264,6 +312,7 @@ public partial class HotKeyProfileControl : UserControl
         CbScope.IsEnabled = isEnabled;
         CbAction.IsEnabled = isEnabled;
         TxtPath.IsEnabled = isEnabled && _profile.Action == HotKeyAction.Open;
+        CbTabGroup.IsEnabled = isEnabled && _profile.Action == HotKeyAction.OpenTabGroup;
         NDelay.IsEnabled = isEnabled;
         CbHandled.IsEnabled = isEnabled;
         CbOpenAsTab.IsEnabled = isEnabled && _profile.Action is
@@ -273,7 +322,23 @@ public partial class HotKeyProfileControl : UserControl
     private void UpdateAction()
     {
         var selectedAction = (HotKeyAction)(CbAction.SelectedItem ?? 0);
+        var previousAction = _previousAction;
+        _previousAction = selectedAction;
         _profile.Action = selectedAction;
+
+        // Path holds a location for "Open" and a group id for "Open tab group"; don't carry one over to the other.
+        if (previousAction != selectedAction && (previousAction == HotKeyAction.OpenTabGroup || selectedAction == HotKeyAction.OpenTabGroup))
+        {
+            _profile.Path = selectedAction == HotKeyAction.OpenTabGroup
+                ? TabGroupManager.Groups.FirstOrDefault()?.Id.ToString()
+                : string.Empty;
+            if (selectedAction != HotKeyAction.OpenTabGroup)
+                TxtPath.Text = string.Empty;
+        }
+
+        RefreshTabGroupComboBox();
+        UpdateParameterControls();
+
         switch (selectedAction)
         {
             case HotKeyAction.Open:
@@ -307,6 +372,7 @@ public partial class HotKeyProfileControl : UserControl
             HotkeyScope.Global =>
             [
                 HotKeyAction.Open,
+                HotKeyAction.OpenTabGroup,
                 HotKeyAction.TabSearch,
                 HotKeyAction.ToggleWinHook,
                 HotKeyAction.ToggleReuseTabs,

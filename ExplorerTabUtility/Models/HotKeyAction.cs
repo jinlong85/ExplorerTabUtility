@@ -38,5 +38,8 @@ public enum HotKeyAction
     [Description("Snap the current window to the top.")]
     SnapUp,
     [Description("Snap the current window to the bottom.")]
-    SnapDown
+    SnapDown,
+    // Appended at the end: actions are stored by name, older numeric values keep their meaning.
+    [Description("Open all folders of the selected tab group as tabs.")]
+    OpenTabGroup
 }
