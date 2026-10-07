@@ -1,0 +1,45 @@
+name: Build
+
+# Build-only CI (no signing / no release) so pull requests get a Windows build to test.
+on:
+  pull_request:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: ExplorerTabUtility
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [ 'net9.0-windows', 'net481' ]
+        arch: [ 'x64' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # Full MSBuild is required because the project uses COMReference (Shell32 / SHDocVw).
+      - name: Build and publish
+        shell: pwsh
+        run: |
+          $outputDir = "../publish/${{ matrix.framework }}/${{ matrix.arch }}"
+          msbuild "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" /restore /t:Publish /p:Configuration=Release /p:TargetFramework=${{ matrix.framework }} /p:RuntimeIdentifier=win-${{ matrix.arch }} /p:PublishDir=$outputDir /p:DebugType=none /p:TreatWarningsAsErrors=false
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PROJECT_NAME }}_${{ matrix.arch }}_${{ matrix.framework == 'net9.0-windows' && 'Net9.0_FrameworkDependent' || 'NetFW4.8.1' }}
+          path: publish/${{ matrix.framework }}/${{ matrix.arch }}/
+          if-no-files-found: error

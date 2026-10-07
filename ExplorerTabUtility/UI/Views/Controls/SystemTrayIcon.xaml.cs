@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Managers;
+using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Commands;
 
 namespace ExplorerTabUtility.UI.Views.Controls;
@@ -26,7 +27,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         InitializeCommands();
 
         TrayIcon.Icon = Helper.GetIcon();
-        TrayIcon.ToolTipText = Constants.NotifyIconText;
+        TrayIcon.ToolTipText = Loc.Get("App_NotifyIconText");
 
         _profileManager = profileManager;
         _hookManager = hookManager;
@@ -38,6 +39,11 @@ public partial class SystemTrayIcon : UserControl, IDisposable
 
         // Populate submenus for keyboard & mouse profiles
         UpdateMenuItems(autoCheckParent: false);
+
+        // Keep "Add to startup" in sync with the registry (it can be changed from Preferences, Task Manager, ...)
+        if (TrayIcon.ContextMenu != null)
+            TrayIcon.ContextMenu.Opened += (_, _) => RefreshStartupMenuItem();
+        RegistryManager.StartupChanged += _ => Dispatcher.BeginInvoke(new Action(RefreshStartupMenuItem));
     }
 
     private void InitializeCommands()
@@ -193,8 +199,28 @@ public partial class SystemTrayIcon : UserControl, IDisposable
 
     private void ToggleStartup()
     {
-        RegistryManager.ToggleStartup();
-        AddToStartup.IsChecked = RegistryManager.IsStartupEnabled;
+        try
+        {
+            RegistryManager.ToggleStartup();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(Loc.Format("Msg_StartupChangeFailed", ex.Message), Loc.Get("App_Title"), icon: MessageBoxImage.Warning);
+        }
+
+        RefreshStartupMenuItem();
+    }
+
+    private void RefreshStartupMenuItem()
+    {
+        try
+        {
+            AddToStartup.IsChecked = RegistryManager.IsStartupEnabled;
+        }
+        catch
+        {
+            AddToStartup.IsChecked = false;
+        }
     }
 
     private void PopulateHookProfiles(MenuItem parent, IEnumerable<HotKeyProfile> profiles, bool autoCheckParent = true)

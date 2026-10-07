@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Windows.Controls;
 using System.Collections.Generic;
 using ExplorerTabUtility.Models;
+using ExplorerTabUtility.Helpers;
+using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Views;
 
 namespace ExplorerTabUtility.Managers;
@@ -32,8 +34,16 @@ public class ProfileManager
     {
         try
         {
-            var profiles = JsonSerializer.Deserialize<List<HotKeyProfile>>(SettingsManager.HotKeyProfiles);
+            var profilesJson = SettingsManager.HotKeyProfiles;
+            var profiles = JsonSerializer.Deserialize<List<HotKeyProfile>>(profilesJson);
             if (profiles == null) return;
+
+            // Built-in profiles that were never saved: show their names in the UI language.
+            if (profilesJson == Constants.DefaultHotKeyProfiles)
+            {
+                foreach (var profile in profiles.Where(p => !string.IsNullOrEmpty(p.Name)))
+                    profile.Name = Loc.Get($"DefaultProfile_{profile.Name}", profile.Name!);
+            }
 
             _savedProfiles.Clear();
             _savedProfiles.AddRange(profiles);

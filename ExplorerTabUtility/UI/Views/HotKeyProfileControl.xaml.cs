@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Collections.Generic;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
+using ExplorerTabUtility.Localization;
 using H.Hooks;
 
 namespace ExplorerTabUtility.UI.Views;
@@ -291,10 +292,12 @@ public partial class HotKeyProfileControl : UserControl
                 break;
         }
         
-        // If the name is empty or is an exact match of an action, set it to the hotkey.
-        var isExactMatch = Enum.GetNames(typeof(HotKeyAction)).Any(a => a == TxtName.Text);
+        // If the name is empty or is an exact match of an action (raw or localized name), set it to the action's display name.
+        var isExactMatch = Enum.GetValues(typeof(HotKeyAction))
+            .OfType<HotKeyAction>()
+            .Any(a => a.ToString() == TxtName.Text || Loc.GetEnumName(a) == TxtName.Text);
         if (string.IsNullOrWhiteSpace(TxtName.Text) || isExactMatch)
-            TxtName.Text = selectedAction.ToString();
+            TxtName.Text = Loc.GetEnumName(selectedAction);
     }
 
     private static HotKeyAction[] GetAllowedActions(HotkeyScope scope)

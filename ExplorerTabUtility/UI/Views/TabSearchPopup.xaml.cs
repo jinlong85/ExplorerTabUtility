@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Hooks;
+using ExplorerTabUtility.Localization;
 using Keyboard = System.Windows.Input.Keyboard;
 
 namespace ExplorerTabUtility.UI.Views;
@@ -180,8 +181,8 @@ public partial class TabSearchPopup : Window
     {
         _isShowingDialog = true;
         var result = CustomMessageBox.Show(
-            "Are you sure you want to clear the closed windows history?",
-            "Confirm Clear History",
+            Loc.Get("Msg_ClearHistoryConfirm"),
+            Loc.Get("Msg_ClearHistoryTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Question,
             MessageBoxResult.No);

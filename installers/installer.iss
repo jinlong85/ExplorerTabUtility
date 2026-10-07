@@ -12,7 +12,7 @@
 #define MyAppName "ExplorerTabUtility"
 #define MyAppExeName MyAppName + ".exe"
 #define MyAppRelativePath MyAppName + "\" + MyAppExeName
-#define MyAppURL "https://github.com/w4po/ExplorerTabUtility"
+#define MyAppURL "https://github.com/jinlong85/ExplorerTabUtility"
 #define DotNet9InstallerUrl "https://download.visualstudio.microsoft.com/download/pr/63f0335a-6012-4017-845f-5d655d56a44f/f8d5150469889387a1de578d45415201/windowsdesktop-runtime-9.0.3-win-x64.exe"
 #define DotNet9InstallerUrlX86 "https://download.visualstudio.microsoft.com/download/pr/48649e20-00b9-43d4-95df-112b80ff7d4e/5652d3ca690f5dc13bbb93ec816c763c/windowsdesktop-runtime-9.0.3-win-x86.exe"
 #define DotNet9InstallerUrlArm64 "https://download.visualstudio.microsoft.com/download/pr/b2f2a05c-c22b-4409-b41e-5f32aaa119a8/71171816b6261ddf0050b3b9172a75ce/windowsdesktop-runtime-9.0.3-win-arm64.exe"
@@ -87,7 +87,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppRelativePath}"; Task
 
 [Registry]
 ; Add to startup if the startup task is selected
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: "{app}\{#MyAppRelativePath}"; Flags: uninsdeletevalue; Tasks: startupicon
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppRelativePath}"""; Flags: uninsdeletevalue; Tasks: startupicon
 ; Set StartupApproved registry entry (enabled = 02 00 00 00 00 00 00 00 00 00 00 00)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"; ValueType: binary; ValueName: "{#MyAppName}"; ValueData: 02 00 00 00 00 00 00 00 00 00 00 00; Flags: uninsdeletevalue; Tasks: startupicon
 

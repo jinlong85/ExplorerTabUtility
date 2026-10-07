@@ -31,7 +31,7 @@ internal static class UpdateManager
 
             p.UpdateInfo = new UpdateInfoEventArgs
             {
-                CurrentVersion = jsonNode["tag_name"]!.GetValue<string>().TrimStart('v'),
+                CurrentVersion = ParseVersionFromTag(jsonNode["tag_name"]!.GetValue<string>()),
                 ChangelogText = jsonNode["body"]!.GetValue<string>(),
                 ChangelogURL = jsonNode["html_url"]!.GetValue<string>(),
                 DownloadURL = FindMatchingUpdateAssetUrl(jsonNode)
@@ -41,6 +41,17 @@ internal static class UpdateManager
         {
             Debug.WriteLine($"Update check failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// "v2.5.1" / "v2.5.1-zh" / "2.5.1+build" => "2.5.1".
+    /// AutoUpdater.NET parses the value with <see cref="Version"/>, which does not accept suffixes.
+    /// </summary>
+    private static string ParseVersionFromTag(string tag)
+    {
+        var version = tag.Trim().TrimStart('v', 'V');
+        var suffixIndex = version.IndexOfAny(['-', '+', ' ']);
+        return suffixIndex > 0 ? version.Substring(0, suffixIndex) : version;
     }
 
     private static string? FindMatchingUpdateAssetUrl(JsonNode jsonNode)

@@ -124,19 +124,19 @@
             <Style TargetType="Separator" BasedOn="{StaticResource TextBoxContextMenuSeparatorStyle}" />
         </ContextMenu.Resources>
 
-        <MenuItem Command="ApplicationCommands.Cut">
+        <MenuItem Command="ApplicationCommands.Cut" Header="{DynamicResource Edit_Cut}">
             <MenuItem.Icon>
                 <TextBlock Text="&#xE8C6;" FontSize="14" />
             </MenuItem.Icon>
         </MenuItem>
 
-        <MenuItem Command="ApplicationCommands.Copy">
+        <MenuItem Command="ApplicationCommands.Copy" Header="{DynamicResource Edit_Copy}">
             <MenuItem.Icon>
                 <TextBlock Text="&#xE8C8;" FontSize="14" />
             </MenuItem.Icon>
         </MenuItem>
 
-        <MenuItem Command="ApplicationCommands.Paste">
+        <MenuItem Command="ApplicationCommands.Paste" Header="{DynamicResource Edit_Paste}">
             <MenuItem.Icon>
                 <TextBlock Text="&#xE77F;" FontSize="14" />
             </MenuItem.Icon>
@@ -144,7 +144,7 @@
 
         <Separator />
 
-        <MenuItem Command="ApplicationCommands.SelectAll">
+        <MenuItem Command="ApplicationCommands.SelectAll" Header="{DynamicResource Edit_SelectAll}">
             <MenuItem.Icon>
                 <TextBlock Text="&#xE8B3;" FontSize="14" />
             </MenuItem.Icon>

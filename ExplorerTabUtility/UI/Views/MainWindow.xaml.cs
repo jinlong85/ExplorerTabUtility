@@ -8,6 +8,7 @@ using ExplorerTabUtility.WinAPI;
 using ExplorerTabUtility.Managers;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Models;
+using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Views.Controls;
 
 namespace ExplorerTabUtility.UI.Views;
@@ -19,6 +20,7 @@ public partial class MainWindow : Window
     private readonly ProfileManager _profileManager;
     private readonly SystemTrayIcon _notifyIconManager;
     private nint _handle;
+    private bool _isRefreshingStartupCheckBox;
 
     public MainWindow()
     {
@@ -32,6 +34,10 @@ public partial class MainWindow : Window
         _hookManager = new HookManager(_profileManager);
         _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow);
 
+        // Fix the "start with Windows" entry if the app was moved, then show the real registry state
+        RegistryManager.RepairStartupPath();
+        RefreshStartWithWindowsCheckBox();
+
         SetupEventHandlers();
         StartHooks();
 
@@ -41,6 +47,7 @@ public partial class MainWindow : Window
         CbAutoSaveProfiles.IsChecked = SettingsManager.SaveProfilesOnExit;
         CbSaveClosedHistory.IsChecked = SettingsManager.SaveClosedHistory;
         CbRestorePreviousWindows.IsChecked = SettingsManager.RestorePreviousWindows;
+        InitializeLanguageComboBox();
         UpdateTrayIconVisibility(false);
 
         if (SettingsManager.AutoUpdate)
@@ -75,11 +82,16 @@ public partial class MainWindow : Window
         CbThemeIssue.Unchecked += CbThemeIssue_CheckedChanged;
         CbHideTrayIcon.Checked += CbHideTrayIcon_CheckedChanged;
         CbHideTrayIcon.Unchecked += CbHideTrayIcon_CheckedChanged;
+        CbStartWithWindows.Checked += CbStartWithWindows_CheckedChanged;
+        CbStartWithWindows.Unchecked += CbStartWithWindows_CheckedChanged;
+        RegistryManager.StartupChanged += _ => Dispatcher.BeginInvoke(new Action(RefreshStartWithWindowsCheckBox));
 
         // Window events
         SizeChanged += MainWindow_SizeChanged;
         Closing += MainWindow_Closing;
         Deactivated += MainWindow_Deactivated;
+        // The startup entry can also be changed from the tray menu, Task Manager or Windows Settings
+        Activated += (_, _) => RefreshStartWithWindowsCheckBox();
 
         // Custom title bar event handlers
         TitleBar.MouseLeftButtonDown += TitleBar_MouseLeftButtonDown;
@@ -128,7 +140,7 @@ public partial class MainWindow : Window
         var ofd = new OpenFileDialog
         {
             FileName = Constants.HotKeyProfilesFileName,
-            Filter = Constants.JsonFileFilter
+            Filter = Loc.Get("FileFilter_Json")
         };
 
         if (ofd.ShowDialog() != true) return;
@@ -143,7 +155,7 @@ public partial class MainWindow : Window
         var sfd = new SaveFileDialog
         {
             FileName = Constants.HotKeyProfilesFileName,
-            Filter = Constants.JsonFileFilter
+            Filter = Loc.Get("FileFilter_Json")
         };
 
         if (sfd.ShowDialog() != true) return;
@@ -187,6 +199,76 @@ public partial class MainWindow : Window
 
     private void CbHideTrayIcon_CheckedChanged(object? _, RoutedEventArgs __) => UpdateTrayIconVisibility(true);
 
+    private void CbStartWithWindows_CheckedChanged(object? _, RoutedEventArgs __)
+    {
+        if (_isRefreshingStartupCheckBox) return;
+
+        try
+        {
+            RegistryManager.SetStartup(CbStartWithWindows.IsChecked == true);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(this, Loc.Format("Msg_StartupChangeFailed", ex.Message), Loc.Get("App_Title"), icon: MessageBoxImage.Warning);
+        }
+
+        RefreshStartWithWindowsCheckBox();
+    }
+
+    private void RefreshStartWithWindowsCheckBox()
+    {
+        bool isEnabled;
+        try
+        {
+            isEnabled = RegistryManager.IsStartupEnabled;
+        }
+        catch
+        {
+            isEnabled = false;
+        }
+
+        if (CbStartWithWindows.IsChecked == isEnabled) return;
+
+        _isRefreshingStartupCheckBox = true;
+        try
+        {
+            CbStartWithWindows.IsChecked = isEnabled;
+        }
+        finally
+        {
+            _isRefreshingStartupCheckBox = false;
+        }
+    }
+
+    private void InitializeLanguageComboBox()
+    {
+        var options = new[] { new LanguageOption(string.Empty, Loc.Get("Pref_LanguageAuto")) }
+            .Concat(Loc.SupportedLanguages.Select(l => new LanguageOption(l.Code, l.DisplayName)))
+            .ToArray();
+
+        CbLanguage.ItemsSource = options;
+        CbLanguage.SelectedItem = options.FirstOrDefault(o => string.Equals(o.Code, SettingsManager.Language, StringComparison.OrdinalIgnoreCase))
+                                  ?? options[0];
+
+        // Subscribe after the initial selection so it doesn't count as a user change.
+        CbLanguage.SelectionChanged += CbLanguage_SelectionChanged;
+    }
+
+    private void CbLanguage_SelectionChanged(object? _, System.Windows.Controls.SelectionChangedEventArgs __)
+    {
+        if (CbLanguage.SelectedItem is not LanguageOption option) return;
+        if (string.Equals(option.Code, SettingsManager.Language, StringComparison.OrdinalIgnoreCase)) return;
+
+        SettingsManager.Language = option.Code;
+        CustomMessageBox.Show(this, Loc.Get("Pref_LanguageRestart"), Loc.Get("App_Title"), icon: MessageBoxImage.Information);
+    }
+
+    private sealed class LanguageOption(string code, string displayName)
+    {
+        public string Code { get; } = code;
+        public override string ToString() => displayName;
+    }
+
     private void UpdateTrayIconVisibility(bool showAlert)
     {
         // Check for valid toggle visibility profile
@@ -201,10 +283,10 @@ public partial class MainWindow : Window
         if (isChecked && showAlert && !SettingsManager.IsTrayIconHidden)
         {
             var message = canToggleVisibility
-                ? $"You can show the app again by pressing {profile!.HotKeys!.HotKeysToString(profile.IsDoubleClick)}"
-                : "Cannot hide tray icon if no hotkey is configured to toggle visibility.";
+                ? Loc.Format("Msg_ShowAppAgain", profile!.HotKeys!.HotKeysToString(profile.IsDoubleClick))
+                : Loc.Get("Msg_CannotHideTrayIcon");
 
-            CustomMessageBox.Show(this, message, Constants.AppName);
+            CustomMessageBox.Show(this, message, Loc.Get("App_Title"));
         }
 
         var newCheckedState = canToggleVisibility && isChecked;

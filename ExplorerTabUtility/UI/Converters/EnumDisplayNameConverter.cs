@@ -1,25 +1,28 @@
 using System;
-using System.Windows;
 using System.Windows.Data;
 using System.Globalization;
 using ExplorerTabUtility.Localization;
 
 namespace ExplorerTabUtility.UI.Converters;
 
-public class EnumDescriptionConverter : IValueConverter
+/// <summary>
+/// Converts an enum value to its localized display name (see <see cref="Loc.GetEnumName"/>).
+/// Non-enum values are returned as their string representation.
+/// </summary>
+public class EnumDisplayNameConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value switch
         {
-            null => DependencyProperty.UnsetValue,
-            Enum enumValue => Loc.GetEnumDescription(enumValue),
+            null => string.Empty,
+            Enum enumValue => Loc.GetEnumName(enumValue),
             _ => value.ToString() ?? string.Empty
         };
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value;
+        return Binding.DoNothing;
     }
 }

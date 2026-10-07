@@ -36,30 +36,30 @@
 
                 <!-- Enabled Toggle -->
                 <ToggleButton x:Name="CbEnabled" Grid.Column="0" Style="{StaticResource ToggleButtonStyle}"
-                              VerticalAlignment="Stretch" ToolTip="Enable or disable this profile" />
+                              VerticalAlignment="Stretch" ToolTip="{DynamicResource Profile_EnabledToolTip}" />
 
                 <!-- Name -->
-                <TextBox x:Name="TxtName" Grid.Column="1" Tag="Name" Style="{StaticResource CustomTextBoxStyle}"
-                         ToolTip="Name of the profile" />
+                <TextBox x:Name="TxtName" Grid.Column="1" Tag="{DynamicResource Profile_NamePlaceholder}" Style="{StaticResource CustomTextBoxStyle}"
+                         ToolTip="{DynamicResource Profile_NameToolTip}" />
 
                 <!-- Hotkeys -->
-                <TextBox x:Name="TxtHotKeys" Grid.Column="3" Tag="Hotkeys" Style="{StaticResource CustomTextBoxStyle}"
-                         ToolTip="Keyboard or mouse keys to listen for. Click to record a new key combination." />
+                <TextBox x:Name="TxtHotKeys" Grid.Column="3" Tag="{DynamicResource Profile_HotKeysPlaceholder}" Style="{StaticResource CustomTextBoxStyle}"
+                         ToolTip="{DynamicResource Profile_HotKeysToolTip}" />
 
                 <!-- Scope -->
                 <ComboBox x:Name="CbScope" Grid.Column="5" Style="{StaticResource CustomComboBoxStyle}"
-                          ToolTip="Scope of the hotkeys: Global (anywhere) or only when File Explorer is focused" />
+                          ToolTip="{DynamicResource Profile_ScopeToolTip}" />
 
                 <!-- Action -->
                 <ComboBox x:Name="CbAction" Grid.Column="6" Style="{StaticResource CustomComboBoxStyle}" Width="150"
-                          ToolTip="Action to perform when the hotkeys are pressed" />
+                          ToolTip="{DynamicResource Profile_ActionToolTip}" />
 
                 <!-- Expander button -->
                 <ToggleButton x:Name="ExpanderToggle" Grid.Column="7" Margin="4, 0" Style="{StaticResource ToggleButtonArrowStyle}"
-                              ToolTip="Show more options" />
+                              ToolTip="{DynamicResource Profile_ExpandToolTip}" />
 
                 <!-- Delete Button -->
-                <Button x:Name="BtnDelete" Grid.Column="8" ToolTip="Delete this profile">
+                <Button x:Name="BtnDelete" Grid.Column="8" ToolTip="{DynamicResource Profile_DeleteToolTip}">
                     <Path Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" Width="16"
                           Height="16" />
@@ -87,14 +87,14 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Path -->
-                <TextBox Grid.Column="0" x:Name="TxtPath" Tag="Location" Style="{StaticResource CustomTextBoxStyle}"
+                <TextBox Grid.Column="0" x:Name="TxtPath" Tag="{DynamicResource Profile_LocationPlaceholder}" Style="{StaticResource CustomTextBoxStyle}"
                          ContextMenu="{StaticResource TextBoxCustomContextMenu}"
-                         ToolTip="Path to open when the hotkeys are pressed. (folder, file, website, CLSID)" />
+                         ToolTip="{DynamicResource Profile_LocationToolTip}" />
 
                 <!-- Delay -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6"
-                            ToolTip="Delay in milliseconds before performing the action">
-                    <TextBlock Text="Delay" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            ToolTip="{DynamicResource Profile_DelayToolTip}">
+                    <TextBlock Text="{DynamicResource Profile_Delay}" VerticalAlignment="Center" Margin="0,0,6,0" />
 
                     <controls:NumericInputControl x:Name="NDelay"
                                                   Margin="0"
@@ -102,17 +102,17 @@
                                                   Minimum="0"
                                                   Maximum="10000"
                                                   Step="100"
-                                                  Suffix="ms"
+                                                  Suffix="{DynamicResource Profile_DelaySuffix}"
                                                   StringFormat="{}{0:N0}" />
                 </StackPanel>
 
                 <!-- Handled -->
-                <ToggleButton Grid.Column="2" x:Name="CbHandled" Content="Handled" Style="{StaticResource ToggleButtonStyle}" Margin="5,0"
-                              ToolTip="Prevent further processing of the hotkeys in other applications" />
+                <ToggleButton Grid.Column="2" x:Name="CbHandled" Content="{DynamicResource Profile_Handled}" Style="{StaticResource ToggleButtonStyle}" Margin="5,0"
+                              ToolTip="{DynamicResource Profile_HandledToolTip}" />
 
                 <!-- Open as Tab -->
-                <ToggleButton Grid.Column="3" x:Name="CbOpenAsTab" Content="Tab" Style="{StaticResource ToggleButtonStyle}" Margin="5,0"
-                              ToolTip="Open as tab instead of a new window" />
+                <ToggleButton Grid.Column="3" x:Name="CbOpenAsTab" Content="{DynamicResource Profile_OpenAsTab}" Style="{StaticResource ToggleButtonStyle}" Margin="5,0"
+                              ToolTip="{DynamicResource Profile_OpenAsTabToolTip}" />
             </Grid>
         </Grid>
     </Border>

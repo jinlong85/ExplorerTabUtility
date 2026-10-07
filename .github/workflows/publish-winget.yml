@@ -4,6 +4,8 @@ on:
     types: [released]
 jobs:
   publish:
+    # Package managers only list the original project; never publish from forks.
+    if: github.repository == 'w4po/ExplorerTabUtility'
     runs-on: windows-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@main
