@@ -311,6 +311,7 @@ public partial class HotKeyProfileControl : UserControl
                 HotKeyAction.ToggleWinHook,
                 HotKeyAction.ToggleReuseTabs,
                 HotKeyAction.ToggleVisibility,
+                HotKeyAction.MergeWindows,
                 HotKeyAction.SnapRight,
                 HotKeyAction.SnapLeft,
                 HotKeyAction.SnapUp,

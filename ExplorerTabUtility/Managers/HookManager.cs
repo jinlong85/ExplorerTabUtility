@@ -21,6 +21,8 @@ public sealed class HookManager
     public event Action? OnWindowHookToggled;
     public event Action? OnReuseTabsToggled;
     public event Action? OnShellInitialized;
+    /// <summary>Raised on the UI thread after a merge that was requested by the user (tray menu / shortcut).</summary>
+    public event Action<MergeResult>? OnWindowsMerged;
 
     public HookManager(ProfileManager profileManager)
     {
@@ -45,6 +47,16 @@ public sealed class HookManager
     public void StartWindowHook() => ChangeHookStatus(_windowHook, true);
     public void StopWindowHook() => ChangeHookStatus(_windowHook, false);
     public void SetReuseTabs(bool value) => _windowHook.SetReuseTabs(value);
+    public void SetAutoMergeWindows(bool value) => _windowHook.SetAutoMergeWindows(value);
+
+    /// <summary>Merges all File Explorer windows into one (the foreground Explorer window, else the most recently used one).</summary>
+    public async Task<MergeResult> MergeWindowsNowAsync(nint preferredTarget = 0)
+    {
+        // Explorer's COM objects live in the multithreaded apartment: run off the UI / hook thread.
+        var result = await Task.Run(() => _windowHook.MergeWindowsAsync(manual: true, preferredTarget));
+        _syncContext.Post(_ => OnWindowsMerged?.Invoke(result), null);
+        return result;
+    }
 
     private async void OnHotKeyProfileTriggered(HotKeyEventArgs e)
     {
@@ -103,6 +115,12 @@ public sealed class HookManager
             case HotKeyAction.SnapUp:
             case HotKeyAction.SnapDown:
                 await SnapForegroundWindow(e.Profile.Action, e.Profile.Delay);
+                break;
+
+            case HotKeyAction.MergeWindows:
+                if (e.Profile.Delay > 0)
+                    await Task.Delay(e.Profile.Delay);
+                await MergeWindowsNowAsync(e.ForegroundWindow);
                 break;
 
             default:

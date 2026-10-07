@@ -36,6 +36,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         _hookManager.OnShellInitialized += HookManager_OnShellInitialized;
         _hookManager.OnWindowHookToggled += HookManager_OnWindowHookToggled;
         _hookManager.OnReuseTabsToggled += HookManager_OnReuseTabsToggled;
+        _hookManager.OnWindowsMerged += HookManager_OnWindowsMerged;
 
         // Populate submenus for keyboard & mouse profiles
         UpdateMenuItems(autoCheckParent: false);
@@ -59,6 +60,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         WindowHook.Command = new RelayCommand(_ => ToggleWindowHook());
         ReuseTabs.Command = new RelayCommand(_ => ToggleReuseTabs());
         AddToStartup.Command = new RelayCommand(_ => ToggleStartup());
+        MergeWindowsNow.Command = new RelayCommand(_ => _ = _hookManager.MergeWindowsNowAsync());
         OpenSettings.Command = new RelayCommand(_ => _showWindowAction());
         CheckForUpdates.Command = new RelayCommand(_ => UpdateManager.CheckForUpdates());
         ExitApplication.Command = new RelayCommand(_ => Application.Current.Shutdown());
@@ -105,6 +107,23 @@ public partial class SystemTrayIcon : UserControl, IDisposable
             WindowHook.IsChecked = true;
             WindowHook.Command.Execute(WindowHook.CommandParameter);
         }
+    }
+
+    private void HookManager_OnWindowsMerged(MergeResult result)
+    {
+        if (result.FailedWindows > 0)
+        {
+            // Nothing is lost, but the user should know why some windows are still there.
+            CustomMessageBox.Show(Loc.Format("Merge_Failed", result.FailedWindows), Loc.Get("App_Title"), icon: MessageBoxImage.Warning);
+            return;
+        }
+
+        if (TrayIcon.Visibility != Visibility.Visible) return;
+
+        var message = result.MergedWindows > 0
+            ? Loc.Format("Merge_Done", result.MergedWindows, result.MovedTabs)
+            : Loc.Get("Merge_Nothing");
+        TrayIcon.ShowBalloonTip(Loc.Get("App_Title"), message, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }
 
     private void HookManager_OnReuseTabsToggled()

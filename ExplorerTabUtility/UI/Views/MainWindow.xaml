@@ -225,6 +225,9 @@
                                             <CheckBox x:Name="CbRestorePreviousWindows" Content="{DynamicResource Pref_RestorePreviousWindows}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_RestorePreviousWindowsToolTip}" />
+                                            <CheckBox x:Name="CbAutoMergeWindows" Content="{DynamicResource Pref_AutoMergeWindows}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource Pref_AutoMergeWindowsToolTip}" />
                                             <CheckBox x:Name="CbHideTrayIcon" Content="{DynamicResource Pref_HideTrayIcon}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_HideTrayIconToolTip}" />

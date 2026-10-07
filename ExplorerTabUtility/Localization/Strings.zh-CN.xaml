@@ -45,6 +45,8 @@
     <sys:String x:Key="Pref_SaveClosedHistoryToolTip">保存已关闭窗口的历史记录，以便之后重新打开（用于“重新打开已关闭”和“标签页搜索”）</sys:String>
     <sys:String x:Key="Pref_RestorePreviousWindows">恢复上次的窗口</sys:String>
     <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">重启或崩溃后恢复之前打开的窗口</sys:String>
+    <sys:String x:Key="Pref_AutoMergeWindows">自动合并多余窗口</sys:String>
+    <sys:String x:Key="Pref_AutoMergeWindowsToolTip">同时打开了多个资源管理器窗口时（例如程序启动前已打开的窗口、资源管理器重启后恢复的窗口），在你短暂停止操作鼠标和键盘后，自动把它们的标签页移到同一个窗口中。特意以单独窗口打开的窗口（按住 Ctrl+Shift 打开、拖出来的标签页）不会被合并。仅在“窗口转标签”开启时生效。</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">隐藏托盘图标</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">隐藏系统托盘图标</sys:String>
     <sys:String x:Key="Pref_StartWithWindows">开机自动启动</sys:String>
@@ -120,10 +122,17 @@
     <sys:String x:Key="HotKeyAction_SnapUp_Desc">将当前窗口贴靠到屏幕顶部。</sys:String>
     <sys:String x:Key="HotKeyAction_SnapDown">贴靠到底部</sys:String>
     <sys:String x:Key="HotKeyAction_SnapDown_Desc">将当前窗口贴靠到屏幕底部。</sys:String>
+    <sys:String x:Key="HotKeyAction_MergeWindows">合并所有窗口</sys:String>
+    <sys:String x:Key="HotKeyAction_MergeWindows_Desc">把所有资源管理器窗口合并到一个窗口中。</sys:String>
     <sys:String x:Key="Tray_KeyboardHookToolTip">启用或禁用键盘快捷键</sys:String>
     <sys:String x:Key="Tray_MouseHookToolTip">启用或禁用鼠标快捷键</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">开启或关闭：自动把新打开的资源管理器窗口转为标签页</sys:String>
     <sys:String x:Key="Tray_ReuseTabsToolTip">开启后，如果位置已在某个标签页中打开，就直接切换过去，而不是重复打开</sys:String>
+    <sys:String x:Key="Tray_MergeWindows">立即合并所有窗口</sys:String>
+    <sys:String x:Key="Tray_MergeWindowsToolTip">把所有资源管理器窗口的标签页移到同一个窗口中</sys:String>
+    <sys:String x:Key="Merge_Done">已将 {0} 个窗口合并到一个窗口（移入 {1} 个标签页）。</sys:String>
+    <sys:String x:Key="Merge_Nothing">没有需要合并的资源管理器窗口。</sys:String>
+    <sys:String x:Key="Merge_Failed">有 {0} 个窗口中的部分标签页未能移动，这些窗口已保留、没有关闭，不会丢失任何内容。</sys:String>
     <sys:String x:Key="Tray_AddToStartup">开机自动启动</sys:String>
     <sys:String x:Key="Tray_AddToStartupToolTip">Windows 启动时自动运行 Explorer Tab Utility</sys:String>
     <sys:String x:Key="Tray_CheckForUpdates">检查更新</sys:String>

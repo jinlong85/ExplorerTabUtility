@@ -82,6 +82,15 @@
                     </MenuItem.Icon>
                 </MenuItem>
 
+                <!-- Merge all windows now -->
+                <MenuItem x:Name="MergeWindowsNow"
+                          Header="{DynamicResource Tray_MergeWindows}"
+                          ToolTip="{DynamicResource Tray_MergeWindowsToolTip}">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#xE7C4;" FontSize="14" />
+                    </MenuItem.Icon>
+                </MenuItem>
+
                 <Separator />
 
                 <!-- Add to startup -->
