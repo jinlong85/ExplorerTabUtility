@@ -180,6 +180,17 @@ public static class SettingsManager
         }
     }
 
+    /// <summary>Merge extra File Explorer windows into one window automatically (at startup and while running).</summary>
+    public static bool AutoMergeWindows
+    {
+        get => Settings.AutoMergeWindows;
+        set
+        {
+            Settings.AutoMergeWindows = value;
+            SaveSettings();
+        }
+    }
+
     public static WindowRecord[]? ClosedWindows
     {
         get => Settings.ClosedWindows;
@@ -233,6 +244,7 @@ internal class AppSettings
     public string HotKeyProfiles { get; set; } = Constants.DefaultHotKeyProfiles;
     public bool SaveClosedWindows { get; set; }
     public bool RestorePreviousWindows { get; set; }
+    public bool AutoMergeWindows { get; set; } = true;
     public WindowRecord[]? ClosedWindows { get; set; }
     public string? Language { get; set; } = string.Empty;
 }

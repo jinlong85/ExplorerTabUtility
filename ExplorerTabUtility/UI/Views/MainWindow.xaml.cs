@@ -47,6 +47,7 @@ public partial class MainWindow : Window
         CbAutoSaveProfiles.IsChecked = SettingsManager.SaveProfilesOnExit;
         CbSaveClosedHistory.IsChecked = SettingsManager.SaveClosedHistory;
         CbRestorePreviousWindows.IsChecked = SettingsManager.RestorePreviousWindows;
+        CbAutoMergeWindows.IsChecked = SettingsManager.AutoMergeWindows;
         InitializeLanguageComboBox();
         UpdateTrayIconVisibility(false);
 
@@ -76,6 +77,8 @@ public partial class MainWindow : Window
         CbSaveClosedHistory.Unchecked += CbSaveClosedHistory_CheckedChanged;
         CbRestorePreviousWindows.Checked += CbRestorePreviousWindows_CheckedChanged;
         CbRestorePreviousWindows.Unchecked += CbRestorePreviousWindows_CheckedChanged;
+        CbAutoMergeWindows.Checked += CbAutoMergeWindows_CheckedChanged;
+        CbAutoMergeWindows.Unchecked += CbAutoMergeWindows_CheckedChanged;
         CbAutoUpdate.Checked += CbAutoUpdate_CheckedChanged;
         CbAutoUpdate.Unchecked += CbAutoUpdate_CheckedChanged;
         CbThemeIssue.Checked += CbThemeIssue_CheckedChanged;
@@ -106,6 +109,7 @@ public partial class MainWindow : Window
         if (SettingsManager.IsMouseHookActive) _hookManager.StartMouseHook();
         if (SettingsManager.IsKeyboardHookActive) _hookManager.StartKeyboardHook();
         _hookManager.SetReuseTabs(SettingsManager.ReuseTabs);
+        _hookManager.SetAutoMergeWindows(SettingsManager.AutoMergeWindows);
     }
 
     private void ToggleWindowVisibility()
@@ -195,6 +199,12 @@ public partial class MainWindow : Window
     private void CbRestorePreviousWindows_CheckedChanged(object? _, RoutedEventArgs __)
     {
         SettingsManager.RestorePreviousWindows = CbRestorePreviousWindows.IsChecked ?? false;
+    }
+
+    private void CbAutoMergeWindows_CheckedChanged(object? _, RoutedEventArgs __)
+    {
+        SettingsManager.AutoMergeWindows = CbAutoMergeWindows.IsChecked ?? false;
+        _hookManager.SetAutoMergeWindows(SettingsManager.AutoMergeWindows);
     }
 
     private void CbHideTrayIcon_CheckedChanged(object? _, RoutedEventArgs __) => UpdateTrayIconVisibility(true);

@@ -151,6 +151,9 @@ public class ExplorerWatcher : IHook
     }
     public async Task SelectTabByHandle(nint windowHandle, nint tabHandle)
     {
+        // Don't walk through the tab positions while tabs are still being created/closed (see SelectTabByIndex).
+        if (!await WaitForTabsSettledAsync(windowHandle, 1_500)) return;
+
         var tabs = Helper.GetAllExplorerTabs(windowHandle).ToArray();
         if (tabs.Length == 0) return;
 
@@ -174,6 +177,14 @@ public class ExplorerWatcher : IHook
     }
     public void SelectTabByIndex(nint windowHandle, int index)
     {
+        // Windows 11 Explorer crashes (and restarts the taskbar/desktop) when it gets this command for a tab position its
+        // tab strip doesn't have: uncaught E_INVALIDARG in FileExplorerTabsController::GetTabIdAtPosition (two crash dumps
+        // of the tab groups build, WM_COMMAND 0xA221 with lParam 2 and 3). While tabs are being created or closed the number
+        // of tab windows can be ahead of the tab strip, so only send it for a position that the tab windows AND the
+        // registered tabs agree on.
+        var safeCount = Math.Min(Helper.GetAllExplorerTabs(windowHandle).Count(), CountRegisteredTabs(windowHandle));
+        if (index < 0 || index >= safeCount) return;
+
         // Send 0xA221 magic command (CTRL + 1...n)
         WinApi.SendMessage(windowHandle, WinApi.WM_COMMAND, 0xA221, index + 1);
     }
@@ -325,6 +336,505 @@ public class ExplorerWatcher : IHook
         }
     }
 
+    // ---- Automatic merging of Explorer windows ----
+    // Moves the tabs of every other normal File Explorer window into one window and closes the emptied windows.
+    //
+    // Why it is done like this (see the crash analysis in the PR): Windows 11 Explorer crashes - taking the taskbar and
+    // desktop with it - when it receives the "select tab N" command (WM_COMMAND 0xA221) for a tab position its tab strip
+    // doesn't know (uncaught E_INVALIDARG in FileExplorerTabsController::GetTabIdAtPosition). While tabs are being created
+    // in quick succession the tab windows and the tab strip can disagree. So merging
+    //  - never sends 0xA221 (tabs are only added with Ctrl+T, which always works on the window's own tab),
+    //  - adds ONE tab at a time (under the same lock as every other "open tab" operation) and only continues after the
+    //    new tab exists, is registered, has navigated to its folder and the window's tabs are consistent again,
+    //  - never brings windows to the front or simulates input when it runs automatically,
+    //  - closes a source window only after ALL of its tabs were confirmed open in the target window.
+    private const int AutoMergeIntervalMs = 1_000;
+    private const int AutoMergeSettleMs = 1_500;   // the set of windows must be unchanged this long
+    private const int AutoMergeIdleMs = 1_500;     // no keyboard/mouse input for this long
+    private const int MaxSelectedItemsToRestore = 100;
+
+    // Control Panel style windows are CabinetWClass windows too, but they are not file folders: never merge them.
+    private static readonly string[] UnsupportedLocationMarkers =
+    [
+        "{26EE0668-A00A-44D7-9371-BEB064C98683}", // Control Panel (category view and its pages)
+        "{21EC2020-3AEA-1069-A2DD-08002B30309D}", // All Control Panel Items
+        "{ED7BA470-8E54-465E-825C-99712043E01C}", // "God mode" (All Tasks)
+    ];
+
+    // Windows the user opened as a separate window on purpose while the app was running (Ctrl+Shift, a detached tab,
+    // "open as window" actions of this app, or while the window hook was off). Automatic merging leaves them alone.
+    private readonly ConcurrentDictionary<nint, byte> _keepAsWindow = new();
+    // Windows whose merge failed (window -> its tabs at that time). Not retried automatically until their tabs change.
+    private readonly ConcurrentDictionary<nint, string> _mergeFailedWindows = new();
+    private readonly SemaphoreSlim _mergeLock = new(1);
+    private Timer? _autoMergeTimer;
+    private volatile bool _autoMergeEnabled;
+    private volatile bool _isMerging;
+    private int _autoMergeTickRunning;
+    private string? _autoMergeSignature, _lastUnsuccessfulAutoMergeSignature;
+    private long _autoMergeSignatureSince, _lastWindowRegisteredAt, _lastMergeFinishedAt;
+
+    private sealed class MergeTab(string location, string[]? selectedItems)
+    {
+        public string Location { get; } = location;
+        public string[]? SelectedItems { get; } = selectedItems;
+    }
+    private sealed class MergeWindow(nint handle)
+    {
+        public nint Handle { get; } = handle;
+        public List<MergeTab> Tabs { get; } = [];
+        public int TabWindowCount { get; set; }
+        public bool HasUnsupportedTab { get; set; }
+        /// <summary>Every tab window has a registered tab object (no tab is still being created or closed).</summary>
+        public bool IsConsistent => TabWindowCount > 0 && TabWindowCount == Tabs.Count;
+        public bool CanBeMerged => IsConsistent && !HasUnsupportedTab;
+        public string Signature => string.Join("|", Tabs.Select(t => t.Location));
+    }
+
+    public void SetAutoMergeWindows(bool enabled)
+    {
+        _autoMergeEnabled = enabled;
+        _autoMergeSignature = null;
+        _lastUnsuccessfulAutoMergeSignature = null;
+
+        if (enabled)
+            _autoMergeTimer ??= new Timer(AutoMergeTick, null, AutoMergeIntervalMs, AutoMergeIntervalMs);
+        else
+        {
+            _autoMergeTimer?.Dispose();
+            _autoMergeTimer = null;
+        }
+    }
+
+    /// <summary>
+    /// Merges the normal File Explorer windows into one window.
+    /// <paramref name="manual"/> (tray menu / shortcut): all windows, including the ones kept on purpose; the result window is brought to the front.
+    /// Automatic: windows the user opened as separate windows on purpose and windows that failed before are skipped, nothing is activated.
+    /// </summary>
+    public async Task<MergeResult> MergeWindowsAsync(bool manual, nint preferredTarget = 0)
+    {
+        var result = new MergeResult();
+        if (_shellWindows == null || _mainExplorerProcessId == 0) return result;
+
+        if (!await _mergeLock.WaitAsync(manual ? 15_000 : 0)) return result;
+        _isMerging = true;
+        var startTick = Environment.TickCount;
+        try
+        {
+            // A manual merge may start right after a click in the tray / a shortcut: give tabs that are still being created a moment.
+            var windows = GetMergeWindows();
+            if (manual && windows.Any(w => !w.IsConsistent))
+            {
+                await Task.Delay(1_000);
+                windows = GetMergeWindows();
+            }
+
+            var candidates = windows
+                .Where(w => manual || (!_keepAsWindow.ContainsKey(w.Handle) && !IsKnownMergeFailure(w)))
+                .ToList();
+            if (candidates.Count < 2) return result;
+
+            // Target: the foreground Explorer window, else the most recently used one (windows are in Z-order).
+            if (preferredTarget == 0) preferredTarget = WinApi.GetForegroundWindow();
+            var target = candidates.FirstOrDefault(w => w.Handle == preferredTarget && w.CanBeMerged)
+                         ?? candidates.FirstOrDefault(w => w.CanBeMerged);
+            if (target == null) return result;
+
+            var sources = candidates.Where(w => w != target && w.CanBeMerged).ToList();
+            if (sources.Count == 0) return result;
+
+            var targetLocations = target.Tabs.Select(t => t.Location).ToList();
+            foreach (var source in sources)
+            {
+                if (!Helper.IsFileExplorerWindow(target.Handle)) break;
+
+                // Automatic merge: stop (between windows) as soon as the user does something.
+                if (!manual && WinApi.GetUserIdleTimeMs() < (uint)(Environment.TickCount - startTick)) break;
+
+                var allOpened = true;
+                foreach (var tab in source.Tabs)
+                {
+                    // Reuse tabs: a folder that is already open in the target window is not opened a second time.
+                    if (_reuseTabs && targetLocations.Any(l => IsSameLocation(l, tab.Location)))
+                        continue;
+
+                    if (!await OpenTabForMergeAsync(target.Handle, tab.Location, tab.SelectedItems))
+                    {
+                        allOpened = false;
+                        break;
+                    }
+
+                    targetLocations.Add(tab.Location);
+                    result.MovedTabs++;
+                }
+
+                // Only close the window when everything it showed is open in the target window, and it didn't change meanwhile.
+                if (!allOpened || GetCurrentSignature(source.Handle) != source.Signature || !await CloseWindowForMergeAsync(source.Handle))
+                {
+                    _mergeFailedWindows[source.Handle] = source.Signature;
+                    result.FailedWindows++;
+                    continue;
+                }
+
+                RemoveClosedRecords(source.Handle, startTick);
+                _keepAsWindow.TryRemove(source.Handle, out _);
+                result.MergedWindows++;
+            }
+
+            if (result.MergedWindows > 0)
+                _mainWindowHandle = target.Handle;
+
+            if (manual && Helper.IsFileExplorerWindow(target.Handle))
+                WinApi.RestoreWindowToForeground(target.Handle);
+
+            return result;
+        }
+        catch
+        {
+            return result;
+        }
+        finally
+        {
+            _lastMergeFinishedAt = Stopwatch.GetTimestamp();
+            _isMerging = false;
+            _mergeLock.Release();
+        }
+    }
+
+    private async void AutoMergeTick(object? _)
+    {
+        if (Interlocked.Exchange(ref _autoMergeTickRunning, 1) == 1) return;
+        try
+        {
+            // Only while the window hook is on (turning it off means "I want separate windows").
+            if (!_autoMergeEnabled || !_isForcingTabs || _shellWindows == null || _mainExplorerProcessId == 0)
+            {
+                _autoMergeSignature = null;
+                return;
+            }
+
+            PruneClosedWindows();
+
+            // Don't interfere with the window hook (a hidden window is being converted into a tab) or another tab operation.
+            if (_isMerging || _toOpenWindowsLock.CurrentCount == 0 || Helper.HiddenWindows.Keys.Any(Helper.IsFileExplorerWindow))
+            {
+                _autoMergeSignature = null;
+                return;
+            }
+
+            var windows = Helper.GetAllExplorerWindows()
+                .Where(h => !_keepAsWindow.ContainsKey(h) && IsNormalExplorerWindow(h))
+                .ToList();
+            if (windows.Count < 2)
+            {
+                _autoMergeSignature = null;
+                return;
+            }
+
+            // Cheap fingerprint of the situation (windows and their number of tabs). Wait until it stays the same for a moment.
+            var signature = string.Join(";", windows
+                .OrderBy(h => (long)h)
+                .Select(h => $"{(long)h:X}:{Helper.GetAllExplorerTabs(h).Count()}"));
+            if (signature == _lastUnsuccessfulAutoMergeSignature) return; // Nothing changed since the last attempt that merged nothing.
+            if (signature != _autoMergeSignature)
+            {
+                _autoMergeSignature = signature;
+                _autoMergeSignatureSince = Stopwatch.GetTimestamp();
+                return;
+            }
+
+            if (!Helper.IsTimeUp(_autoMergeSignatureSince, AutoMergeSettleMs) ||
+                !Helper.IsTimeUp(_lastWindowRegisteredAt, 2_000) ||
+                !Helper.IsTimeUp(_lastMergeFinishedAt, 3_000))
+                return;
+
+            // Don't interrupt the user: wait until there was no input for a moment and no mouse button is held (dragging a tab/window).
+            if (WinApi.GetUserIdleTimeMs() < AutoMergeIdleMs || IsMouseButtonDown()) return;
+
+            var result = await MergeWindowsAsync(manual: false);
+            _lastUnsuccessfulAutoMergeSignature = result.MergedWindows == 0 ? signature : null;
+            _autoMergeSignature = null;
+        }
+        catch
+        {
+            // Never let the timer die because of a closed window / restarted Explorer.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _autoMergeTickRunning, 0);
+        }
+    }
+
+    private static bool IsMouseButtonDown()
+    {
+        return (WinApi.GetAsyncKeyState(0x01) & 0x8000) != 0 || // VK_LBUTTON
+               (WinApi.GetAsyncKeyState(0x02) & 0x8000) != 0 || // VK_RBUTTON
+               (WinApi.GetAsyncKeyState(0x04) & 0x8000) != 0;   // VK_MBUTTON
+    }
+
+    /// <summary>
+    /// A visible File Explorer window on the current virtual desktop that has tabs and is not being converted into a tab right now.
+    /// (Open/save dialogs and other apps use other window classes.)
+    /// </summary>
+    private static bool IsNormalExplorerWindow(nint hWnd)
+    {
+        return WinApi.IsWindowVisible(hWnd) &&
+               !WinApi.IsWindowCloaked(hWnd) &&
+               !Helper.HiddenWindows.ContainsKey(hWnd) &&
+               WinApi.FindWindowEx(hWnd, 0, "ShellTabWindowClass", null) != 0;
+    }
+
+    /// <summary>The normal Explorer windows (most recently used first) with their tabs in the order Explorer registered them.</summary>
+    private List<MergeWindow> GetMergeWindows()
+    {
+        var windows = Helper.GetAllExplorerWindows()
+            .Where(IsNormalExplorerWindow)
+            .Select(h => new MergeWindow(h))
+            .ToList();
+        if (windows.Count < 2) return windows;
+
+        var byHandle = windows.ToDictionary(w => w.Handle);
+        foreach (var (tab, frame) in GetRegisteredTabs())
+        {
+            if (!byHandle.TryGetValue(frame, out var window)) continue;
+
+            string location;
+            try { location = GetLocation(tab); }
+            catch { location = string.Empty; }
+
+            if (!IsMergeableLocation(location))
+                window.HasUnsupportedTab = true;
+
+            window.Tabs.Add(new MergeTab(location, GetSelectedItemsForMerge(tab)));
+        }
+
+        foreach (var window in windows)
+            window.TabWindowCount = Helper.GetAllExplorerTabs(window.Handle).Count();
+
+        return windows;
+    }
+
+    /// <summary>All registered Explorer tabs with the handle of the window that hosts them, in registration order.</summary>
+    private List<(InternetExplorer Tab, nint Window)> GetRegisteredTabs()
+    {
+        var result = new List<(InternetExplorer, nint)>();
+        try
+        {
+            var count = _shellWindows.Count;
+            for (var i = 0; i < count; i++)
+            {
+                try
+                {
+                    if (_shellWindows.Item(i) is not InternetExplorer tab) continue;
+                    result.Add((tab, new IntPtr(tab.HWND)));
+                }
+                catch
+                {
+                    // The tab was closed meanwhile.
+                }
+            }
+        }
+        catch
+        {
+            // Explorer restarted
+        }
+
+        return result;
+    }
+
+    private int CountRegisteredTabs(nint window) => GetRegisteredTabs().Count(t => t.Window == window);
+
+    private string? GetCurrentSignature(nint window)
+    {
+        if (!Helper.IsFileExplorerWindow(window)) return null;
+
+        var locations = new List<string>();
+        foreach (var (tab, frame) in GetRegisteredTabs())
+        {
+            if (frame != window) continue;
+            try { locations.Add(GetLocation(tab)); }
+            catch { return null; }
+        }
+
+        return string.Join("|", locations);
+    }
+
+    private bool IsKnownMergeFailure(MergeWindow window)
+    {
+        return _mergeFailedWindows.TryGetValue(window.Handle, out var signature) && signature == window.Signature;
+    }
+
+    private bool IsMergeableLocation(string location)
+    {
+        if (string.IsNullOrWhiteSpace(location)) return false;
+        if (UnsupportedLocationMarkers.Any(m => location.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0)) return false;
+
+        // This PC, Recycle Bin, Home, Network, libraries, shell:::{CLSID} ... are fine as long as the shell can resolve them again.
+        nint pidl = 0;
+        try
+        {
+            pidl = _shellPathComparer.GetPidlFromPath(location);
+            return pidl != 0;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            if (pidl != 0) Marshal.FreeCoTaskMem(pidl);
+        }
+    }
+
+    private static string[]? GetSelectedItemsForMerge(InternetExplorer tab)
+    {
+        try
+        {
+            if (tab.Document is not ShellFolderView view) return null;
+            var count = view.SelectedItems().Count;
+            if (count == 0 || count > MaxSelectedItemsToRestore) return null;
+            return GetSelectedItems(tab);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Waits until every tab window of <paramref name="window"/> has a registered tab object and the number of tabs
+    /// stayed the same for a short moment (no tab is being created or closed). Returns false on timeout.
+    /// </summary>
+    private async Task<bool> WaitForTabsSettledAsync(nint window, int timeoutMs)
+    {
+        var startTicks = Stopwatch.GetTimestamp();
+        var previous = -1;
+        while (true)
+        {
+            if (!Helper.IsFileExplorerWindow(window)) return false;
+
+            var tabWindows = Helper.GetAllExplorerTabs(window).Count();
+            var consistent = tabWindows > 0 && tabWindows == CountRegisteredTabs(window);
+            if (consistent && tabWindows == previous) return true;
+
+            previous = consistent ? tabWindows : -1;
+            if (Helper.IsTimeUp(startTicks, timeoutMs)) return false;
+            await Task.Delay(100);
+        }
+    }
+
+    /// <summary>
+    /// Opens ONE new tab with <paramref name="location"/> in <paramref name="window"/> and waits until it really shows that location.
+    /// Never creates a window and never activates anything. Returns false if the tab could not be confirmed.
+    /// </summary>
+    private async Task<bool> OpenTabForMergeAsync(nint window, string location, string[]? selectedItems)
+    {
+        await _toOpenWindowsLock.WaitAsync();
+        try
+        {
+            if (!await WaitForTabsSettledAsync(window, 3_000)) return false;
+
+            var currentTabs = Helper.GetAllExplorerTabs(window).ToArray();
+            if (currentTabs.Length == 0) return false;
+
+            // Send 0xA21B magic command (CTRL + T), exactly like RequestToOpenNewTab.
+            WinApi.PostMessage(currentTabs[0], WinApi.WM_COMMAND, 0xA21B, 0);
+
+            var newTabHandle = await Helper.ListenForNewExplorerTabAsync(window, currentTabs, 3_000);
+            if (newTabHandle == 0) return false;
+
+            var tab = await Helper.DoUntilNotDefaultAsync(() => GetWindowByTabHandle(newTabHandle), 3_000, 50);
+            if (tab == null) return false;
+
+            await Navigate(tab, location);
+
+            // Confirmed only when the new tab reports the requested location.
+            var opened = await Helper.DoUntilConditionAsync(() => IsTabAt(tab, location), ok => ok, 6_000, 100);
+            if (!opened) return false;
+
+            if (selectedItems?.Length > 0)
+            {
+                try
+                {
+                    await Helper.DoUntilConditionAsync(() => tab.ReadyState, s => s == tagREADYSTATE.READYSTATE_COMPLETE, 2_000, 50);
+                    SelectItems(tab, selectedItems);
+                }
+                catch
+                {
+                    // Restoring the selection is a nice-to-have.
+                }
+            }
+
+            // Let the window finish registering the new tab before the next one is requested.
+            await WaitForTabsSettledAsync(window, 2_000);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            _toOpenWindowsLock.Release();
+        }
+    }
+
+    private bool IsTabAt(InternetExplorer tab, string location)
+    {
+        try
+        {
+            return IsSameLocation(GetLocation(tab), location);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<bool> CloseWindowForMergeAsync(nint window)
+    {
+        if (!Helper.IsFileExplorerWindow(window)) return true;
+
+        WinApi.PostMessage(window, WinApi.WM_CLOSE, 0, 0);
+        return await Helper.DoUntilConditionAsync(() => !WinApi.IsWindow(window) || !Helper.IsFileExplorerWindow(window), gone => gone, 3_000, 50);
+    }
+
+    /// <summary>The tabs of a merged window were moved, not closed: keep them out of the "reopen closed" history.</summary>
+    private void RemoveClosedRecords(nint window, int sinceTick)
+    {
+        RemoveNow();
+        // OnQuit of the closed tabs can arrive a bit later.
+        _ = Task.Delay(1_500).ContinueWith(_ => RemoveNow(), TaskScheduler.Default);
+        return;
+
+        void RemoveNow()
+        {
+            lock (_closedWindowsLock)
+                _closedWindows.RemoveAll(r => r.Handle == window && r.CreatedAt - sinceTick >= 0);
+        }
+    }
+
+    private void PruneClosedWindows()
+    {
+        // Windows converted into tabs are closed while still listed as hidden; forget them (window handles get reused).
+        foreach (var hWnd in Helper.HiddenWindows.Keys)
+            if (!WinApi.IsWindow(hWnd)) Helper.HiddenWindows.TryRemove(hWnd, out _);
+
+        foreach (var hWnd in _keepAsWindow.Keys)
+            if (!Helper.IsFileExplorerWindow(hWnd)) _keepAsWindow.TryRemove(hWnd, out _);
+
+        foreach (var hWnd in _mergeFailedWindows.Keys)
+            if (!Helper.IsFileExplorerWindow(hWnd)) _mergeFailedWindows.TryRemove(hWnd, out _);
+    }
+
+    /// <summary>Remember that the user opened <paramref name="hWnd"/> as a separate window on purpose.</summary>
+    private void KeepAsWindow(nint hWnd)
+    {
+        // Only an ADDITIONAL window is "separate on purpose"; the only window is simply the window new tabs go to.
+        if (hWnd != 0 && Helper.GetAllExplorerWindows().Any(h => h != hWnd))
+            _keepAsWindow[hWnd] = 0;
+    }
+
     private void PreventWindowHiding(nint hWnd)
     {
         if (_processedHWnds.TryAdd(hWnd, 0))
@@ -381,6 +891,7 @@ public class ExplorerWatcher : IHook
     {
         var showAgain = true;
         nint hWnd = 0;
+        _lastWindowRegisteredAt = Stopwatch.GetTimestamp();
         try
         {
             var shouldOpenAsWindow = Helper.IsCtrlShiftDown();
@@ -395,6 +906,8 @@ public class ExplorerWatcher : IHook
             
             if (shouldOpenAsWindow)
             {
+                // Opened as a new window on purpose (Ctrl+Shift): automatic merging must leave it alone.
+                if (Helper.GetAllExplorerTabs(hWnd).Take(2).Count() == 1) KeepAsWindow(hWnd);
                 PreventWindowHiding(hWnd);
                 HookWindowEvents(window, windowInfo);
                 return;
@@ -411,10 +924,15 @@ public class ExplorerWatcher : IHook
             }
 
             // Check if this is a single tab window and there are other windows
+            var isNewWindow = Helper.GetAllExplorerTabs(hWnd).Take(2).Count() == 1;
             var shouldReopenAsTab = (_isForcingTabs || _reuseTabs) &&
                                     _windowEntryDict.Count > 1 &&
                                     hWnd != _mainWindowHandle &&
-                                    Helper.GetAllExplorerTabs(hWnd).Take(2).Count() == 1;
+                                    isNewWindow;
+
+            // A new window while the window hook is off is a window the user wants: automatic merging leaves it alone.
+            if (isNewWindow && !_isForcingTabs && !_reuseTabs && _windowEntryDict.Count > 1)
+                KeepAsWindow(hWnd);
 
             if (shouldReopenAsTab)
                 Helper.HideWindow(hWnd, SettingsManager.HaveThemeIssue);
@@ -427,6 +945,10 @@ public class ExplorerWatcher : IHook
                 SelectItems(window, closedWindow!.SelectedItems);
 
             shouldReopenAsTab = shouldReopenAsTab && !isRecentlyClosed;
+
+            // A detached tab or a location this app opened "as window": a separate window on purpose.
+            if (isRecentlyClosed && isNewWindow)
+                KeepAsWindow(hWnd);
 
             if (shouldReopenAsTab)
             {
@@ -479,6 +1001,8 @@ public class ExplorerWatcher : IHook
                 isRecentlyClosed = await Helper.DoUntilNotDefaultAsync(() => TryGetRecentlyClosedWindow(location, out closedWindow), 700, 50);
                 if (isRecentlyClosed)
                     SelectItems(window, closedWindow!.SelectedItems);
+                if (isRecentlyClosed && isNewWindow)
+                    KeepAsWindow(hWnd);
             }
 
             HookWindowEvents(window, windowInfo);
@@ -949,6 +1473,9 @@ public class ExplorerWatcher : IHook
         {
             if (!_isForcingTabs && !_reuseTabs) return;
 
+            // Tabs created by a merge load their folders in the background: that is not "Explorer showed an item".
+            if (_isMerging || !Helper.IsTimeUp(_lastMergeFinishedAt, 2_000)) return;
+
             // Ignore our own selection changes and the initial selection of a new tab / a folder that was just navigated to.
             if (!Helper.IsTimeUp(_lastOwnSelectionTicks, 700) ||
                 !Helper.IsTimeUp(windowInfo.CreatedAt, 2_000) ||
@@ -1376,6 +1903,7 @@ public class ExplorerWatcher : IHook
 
     public void Dispose()
     {
+        SetAutoMergeWindows(false);
         DisposeShellObjects();
         _instanceRunning = false;
         _processWatcher.Dispose();

@@ -93,6 +93,49 @@ public static class WinApi
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     public static extern bool PostMessage(nint hWnd, uint Msg, nint wParam, nint lParam);
     
+    public const uint WM_CLOSE = 0x0010;
+    public const int DWMWA_CLOAKED = 14;
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(nint hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindow(nint hWnd);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LASTINPUTINFO
+    {
+        public uint cbSize;
+        public uint dwTime;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(nint hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
+
+    /// <summary>Milliseconds since the last keyboard/mouse input of the user (any application).</summary>
+    public static uint GetUserIdleTimeMs()
+    {
+        var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
+        if (!GetLastInputInfo(ref info)) return 0;
+        return unchecked((uint)Environment.TickCount - info.dwTime);
+    }
+
+    /// <summary>True for windows that are hidden by DWM (e.g. windows on another virtual desktop).</summary>
+    public static bool IsWindowCloaked(nint hWnd)
+    {
+        try
+        {
+            return DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
     

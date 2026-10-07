@@ -45,6 +45,8 @@
     <sys:String x:Key="Pref_SaveClosedHistoryToolTip">Save closed windows history so you can reopen them later (ReopenClosed, Tab search)</sys:String>
     <sys:String x:Key="Pref_RestorePreviousWindows">Restore previous windows</sys:String>
     <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">Restore previously opened windows after restart or crash</sys:String>
+    <sys:String x:Key="Pref_AutoMergeWindows">Automatically merge extra windows</sys:String>
+    <sys:String x:Key="Pref_AutoMergeWindowsToolTip">When several File Explorer windows are open (e.g. windows that were open before the app started, or windows restored after Explorer restarted), their tabs are moved into one window as soon as you stop using the mouse and keyboard for a moment. Windows you opened as a separate window on purpose (Ctrl+Shift, a dragged-out tab) are left alone. Only while "Window Hook" is on.</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">Hide tray icon</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">Hide the system tray icon</sys:String>
     <sys:String x:Key="Pref_StartWithWindows">Start with Windows</sys:String>
@@ -120,10 +122,17 @@
     <sys:String x:Key="HotKeyAction_SnapUp_Desc">Snap the current window to the top.</sys:String>
     <sys:String x:Key="HotKeyAction_SnapDown">SnapDown</sys:String>
     <sys:String x:Key="HotKeyAction_SnapDown_Desc">Snap the current window to the bottom.</sys:String>
+    <sys:String x:Key="HotKeyAction_MergeWindows">MergeWindows</sys:String>
+    <sys:String x:Key="HotKeyAction_MergeWindows_Desc">Merge all File Explorer windows into one window.</sys:String>
     <sys:String x:Key="Tray_KeyboardHookToolTip">Enable or disable keyboard shortcuts</sys:String>
     <sys:String x:Key="Tray_MouseHookToolTip">Enable or disable mouse shortcuts</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">Toggle automatic redirection of new Explorer windows to tabs</sys:String>
     <sys:String x:Key="Tray_ReuseTabsToolTip">When enabled, navigates to existing tabs instead of opening duplicate tabs</sys:String>
+    <sys:String x:Key="Tray_MergeWindows">Merge all windows now</sys:String>
+    <sys:String x:Key="Tray_MergeWindowsToolTip">Move the tabs of all File Explorer windows into one window</sys:String>
+    <sys:String x:Key="Merge_Done">Merged {0} window(s) into one window ({1} tab(s) moved).</sys:String>
+    <sys:String x:Key="Merge_Nothing">There are no other File Explorer windows to merge.</sys:String>
+    <sys:String x:Key="Merge_Failed">Some tabs of {0} window(s) could not be moved. Those windows were left open, so nothing is lost.</sys:String>
     <sys:String x:Key="Tray_AddToStartup">Add to startup</sys:String>
     <sys:String x:Key="Tray_AddToStartupToolTip">Automatically start Explorer Tab Utility when Windows starts</sys:String>
     <sys:String x:Key="Tray_CheckForUpdates">Check for updates</sys:String>
