@@ -3,6 +3,8 @@ using System.Threading;
 using System.Windows.Controls;
 using ExplorerTabUtility.UI.Views;
 using ExplorerTabUtility.Helpers;
+using ExplorerTabUtility.Managers;
+using ExplorerTabUtility.Localization;
 
 namespace ExplorerTabUtility;
 
@@ -13,6 +15,8 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        Loc.Initialize(this, SettingsManager.Language);
+
         _mutex = new Mutex(true, Constants.MutexId, out var createdNew);
 
         if (createdNew)
@@ -24,10 +28,7 @@ public partial class App : Application
             return;
         }
 
-        CustomMessageBox.Show("""
-                              Another instance is already running.
-                              Check in System Tray Icons.
-                              """, Constants.AppName, icon: MessageBoxImage.Information);
+        CustomMessageBox.Show(Loc.Get("App_AnotherInstance"), Loc.Get("App_Title"), icon: MessageBoxImage.Information);
         Shutdown();
     }
 

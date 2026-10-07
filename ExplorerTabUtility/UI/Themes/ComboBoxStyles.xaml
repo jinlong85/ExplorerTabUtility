@@ -5,6 +5,7 @@
 
     <!-- Converters -->
     <converters:EnumDescriptionConverter x:Key="EnumDescriptionConverter" />
+    <converters:EnumDisplayNameConverter x:Key="EnumDisplayNameConverter" />
 
     <!-- ComboBox Item Style -->
     <Style x:Key="CustomComboBoxItemStyle" TargetType="ComboBoxItem">
@@ -22,6 +23,7 @@
                             CornerRadius="2"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter TextElement.Foreground="{StaticResource TextPrimaryBrush}"
+                                          Content="{Binding Converter={StaticResource EnumDisplayNameConverter}}"
                                           ToolTip="{Binding Converter={StaticResource EnumDescriptionConverter}}" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -70,7 +72,7 @@
                                        Margin="{TemplateBinding Padding}"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Left"
-                                       Text="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                       Text="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}, Converter={StaticResource EnumDisplayNameConverter}}"
                                        Foreground="{StaticResource TextPrimaryBrush}" />
                             <Path x:Name="Arrow"
                                   Grid.Column="1"

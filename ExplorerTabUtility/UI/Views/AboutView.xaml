@@ -379,7 +379,7 @@
                         </Border>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <TextBlock Text="Explorer Tab Utility"
+                            <TextBlock Text="{DynamicResource App_Title}"
                                        Style="{StaticResource AppTitleStyle}"
                                        MouseLeftButtonUp="OpenProjectPage">
                                 <TextBlock.Effect>
@@ -405,7 +405,7 @@
                                        VerticalAlignment="Bottom" />
                         </StackPanel>
 
-                        <TextBlock Text="Enhance your Windows File Explorer experience"
+                        <TextBlock Text="{DynamicResource About_Tagline}"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center"
                                    Margin="0,0,0,4" />
@@ -450,7 +450,7 @@
                                         <ScaleTransform ScaleX="1" ScaleY="1" />
                                     </TextBlock.RenderTransform>
                                 </TextBlock>
-                                <TextBlock Text="Star on GitHub"
+                                <TextBlock Text="{DynamicResource About_StarOnGitHub}"
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -468,10 +468,10 @@
 
                     <!-- Left Column: Support Options -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Support the Project"
+                        <TextBlock Text="{DynamicResource About_SupportTitle}"
                                    Style="{StaticResource SectionTitleStyle}" />
 
-                        <TextBlock Text="If you find this utility helpful, consider supporting its development through one of these options:"
+                        <TextBlock Text="{DynamicResource About_SupportText}"
                                    TextWrapping="Wrap"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Height="42"
@@ -532,7 +532,7 @@
                         <Border Margin="0,24,0,0" CornerRadius="8"
                                 Style="{StaticResource ProfileCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Developer"
+                                <TextBlock Text="{DynamicResource About_Developer}"
                                            FontWeight="SemiBold"
                                            FontSize="18"
                                            Foreground="{StaticResource TextPrimaryBrush}"
@@ -591,10 +591,10 @@
 
                     <!-- Right Column: Supporters -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Current Supporters"
+                        <TextBlock Text="{DynamicResource About_SupportersTitle}"
                                    Style="{StaticResource SectionTitleStyle}" />
 
-                        <TextBlock Text="Thank you to all the amazing people who support this project!"
+                        <TextBlock Text="{DynamicResource About_SupportersText}"
                                    TextWrapping="Wrap"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    Height="42"
@@ -631,13 +631,13 @@
                                                                                               Opacity="0.5" />
                                                                         </TextBlock.Effect>
                                                                     </TextBlock>
-                                                                    <TextBlock Text="Be the first to support this project!"
+                                                                    <TextBlock Text="{DynamicResource About_BeFirstSupporter}"
                                                                                TextWrapping="Wrap"
                                                                                FontSize="16"
                                                                                FontWeight="Medium"
                                                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                                                HorizontalAlignment="Center" />
-                                                                    <TextBlock Text="Your support helps keep this project alive"
+                                                                    <TextBlock Text="{DynamicResource About_SupportHelps}"
                                                                                TextWrapping="Wrap"
                                                                                Margin="0,8,0,0"
                                                                                Foreground="{StaticResource TextSecondaryBrush}"

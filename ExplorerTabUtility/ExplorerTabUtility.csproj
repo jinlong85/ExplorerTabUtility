@@ -15,7 +15,8 @@
         <Copyright>Copyright © 2025 w4po</Copyright>
         <PackageProjectUrl>https://github.com/w4po/ExplorerTabUtility</PackageProjectUrl>
         <RepositoryUrl>https://github.com/w4po/ExplorerTabUtility</RepositoryUrl>
-        <SatelliteResourceLanguages>none</SatelliteResourceLanguages>
+        <!-- Only ship the Chinese satellite resources of dependencies (e.g. the AutoUpdater.NET update dialog). -->
+        <SatelliteResourceLanguages>zh</SatelliteResourceLanguages>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     </PropertyGroup>
 

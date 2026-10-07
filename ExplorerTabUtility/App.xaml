@@ -7,6 +7,8 @@
                 <ResourceDictionary Source="pack://application:,,,/ExplorerTabUtility;component/UI/Themes/Colors.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/ExplorerTabUtility;component/UI/Themes/DefaultStyles.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/ExplorerTabUtility;component/UI/Themes/ThemeResources.xaml" />
+                <!-- Base (English) UI strings. The active translation is merged on top at startup (see Localization/Loc.cs). -->
+                <ResourceDictionary Source="pack://application:,,,/ExplorerTabUtility;component/Localization/Strings.en-US.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

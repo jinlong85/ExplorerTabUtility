@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Managers;
+using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Commands;
 
 namespace ExplorerTabUtility.UI.Views.Controls;
@@ -26,7 +27,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         InitializeCommands();
 
         TrayIcon.Icon = Helper.GetIcon();
-        TrayIcon.ToolTipText = Constants.NotifyIconText;
+        TrayIcon.ToolTipText = Loc.Get("App_NotifyIconText");
 
         _profileManager = profileManager;
         _hookManager = hookManager;

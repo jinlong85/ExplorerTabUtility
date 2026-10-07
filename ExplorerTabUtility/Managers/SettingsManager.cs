@@ -191,6 +191,19 @@ public static class SettingsManager
     }
 
 
+    /// <summary>
+    /// UI language code (e.g. "en-US", "zh-CN"). Empty means follow the Windows display language.
+    /// </summary>
+    public static string Language
+    {
+        get => Settings.Language ?? string.Empty;
+        set
+        {
+            Settings.Language = value;
+            SaveSettings();
+        }
+    }
+
     public static void SaveSettings()
     {
         try
@@ -221,4 +234,5 @@ internal class AppSettings
     public bool SaveClosedWindows { get; set; }
     public bool RestorePreviousWindows { get; set; }
     public WindowRecord[]? ClosedWindows { get; set; }
+    public string? Language { get; set; } = string.Empty;
 }

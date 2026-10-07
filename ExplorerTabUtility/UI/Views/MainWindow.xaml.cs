@@ -8,6 +8,7 @@ using ExplorerTabUtility.WinAPI;
 using ExplorerTabUtility.Managers;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Models;
+using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Views.Controls;
 
 namespace ExplorerTabUtility.UI.Views;
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
         CbAutoSaveProfiles.IsChecked = SettingsManager.SaveProfilesOnExit;
         CbSaveClosedHistory.IsChecked = SettingsManager.SaveClosedHistory;
         CbRestorePreviousWindows.IsChecked = SettingsManager.RestorePreviousWindows;
+        InitializeLanguageComboBox();
         UpdateTrayIconVisibility(false);
 
         if (SettingsManager.AutoUpdate)
@@ -128,7 +130,7 @@ public partial class MainWindow : Window
         var ofd = new OpenFileDialog
         {
             FileName = Constants.HotKeyProfilesFileName,
-            Filter = Constants.JsonFileFilter
+            Filter = Loc.Get("FileFilter_Json")
         };
 
         if (ofd.ShowDialog() != true) return;
@@ -143,7 +145,7 @@ public partial class MainWindow : Window
         var sfd = new SaveFileDialog
         {
             FileName = Constants.HotKeyProfilesFileName,
-            Filter = Constants.JsonFileFilter
+            Filter = Loc.Get("FileFilter_Json")
         };
 
         if (sfd.ShowDialog() != true) return;
@@ -187,6 +189,35 @@ public partial class MainWindow : Window
 
     private void CbHideTrayIcon_CheckedChanged(object? _, RoutedEventArgs __) => UpdateTrayIconVisibility(true);
 
+    private void InitializeLanguageComboBox()
+    {
+        var options = new[] { new LanguageOption(string.Empty, Loc.Get("Pref_LanguageAuto")) }
+            .Concat(Loc.SupportedLanguages.Select(l => new LanguageOption(l.Code, l.DisplayName)))
+            .ToArray();
+
+        CbLanguage.ItemsSource = options;
+        CbLanguage.SelectedItem = options.FirstOrDefault(o => string.Equals(o.Code, SettingsManager.Language, StringComparison.OrdinalIgnoreCase))
+                                  ?? options[0];
+
+        // Subscribe after the initial selection so it doesn't count as a user change.
+        CbLanguage.SelectionChanged += CbLanguage_SelectionChanged;
+    }
+
+    private void CbLanguage_SelectionChanged(object? _, System.Windows.Controls.SelectionChangedEventArgs __)
+    {
+        if (CbLanguage.SelectedItem is not LanguageOption option) return;
+        if (string.Equals(option.Code, SettingsManager.Language, StringComparison.OrdinalIgnoreCase)) return;
+
+        SettingsManager.Language = option.Code;
+        CustomMessageBox.Show(this, Loc.Get("Pref_LanguageRestart"), Loc.Get("App_Title"), icon: MessageBoxImage.Information);
+    }
+
+    private sealed class LanguageOption(string code, string displayName)
+    {
+        public string Code { get; } = code;
+        public override string ToString() => displayName;
+    }
+
     private void UpdateTrayIconVisibility(bool showAlert)
     {
         // Check for valid toggle visibility profile
@@ -201,10 +232,10 @@ public partial class MainWindow : Window
         if (isChecked && showAlert && !SettingsManager.IsTrayIconHidden)
         {
             var message = canToggleVisibility
-                ? $"You can show the app again by pressing {profile!.HotKeys!.HotKeysToString(profile.IsDoubleClick)}"
-                : "Cannot hide tray icon if no hotkey is configured to toggle visibility.";
+                ? Loc.Format("Msg_ShowAppAgain", profile!.HotKeys!.HotKeysToString(profile.IsDoubleClick))
+                : Loc.Get("Msg_CannotHideTrayIcon");
 
-            CustomMessageBox.Show(this, message, Constants.AppName);
+            CustomMessageBox.Show(this, message, Loc.Get("App_Title"));
         }
 
         var newCheckedState = canToggleVisibility && isChecked;
