@@ -135,7 +135,8 @@ public class ProfileManager
     }
 
     private static bool IsMouseExample(HotKeyProfile p) =>
-        p is { IsMouse: true, IsDoubleClick: true, Action: HotKeyAction.NavigateUp, Scope: HotkeyScope.FileExplorer, HotKeys: [Key.MouseLeft] };
+        p is { IsMouse: true, IsDoubleClick: true, Action: HotKeyAction.NavigateUp, Scope: HotkeyScope.FileExplorer, HotKeys: { Length: 1 } keys } &&
+        keys[0] == Key.MouseLeft; // (no list pattern: needs System.Index, which .NET Framework 4.8.1 doesn't have)
 
     public IReadOnlyList<HotKeyProfile> GetProfiles() => _savedProfiles.AsReadOnly();
     public IEnumerable<HotKeyProfile> GetKeyboardProfiles() => _savedProfiles.Where(p => !p.IsMouse);
