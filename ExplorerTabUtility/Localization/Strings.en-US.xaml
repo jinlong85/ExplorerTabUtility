@@ -43,12 +43,12 @@
     <sys:String x:Key="Pref_ThemeIssueToolTip" xml:space="preserve">Use alternative window hiding method that preserves your custom File-Explorer theme.&#x0a;Enable this if you have theme-related issues</sys:String>
     <sys:String x:Key="Pref_SaveClosedHistory">Save closed history</sys:String>
     <sys:String x:Key="Pref_SaveClosedHistoryToolTip">Save closed windows history so you can reopen them later (ReopenClosed, Tab search)</sys:String>
-    <sys:String x:Key="Pref_RestorePreviousWindows">Restore previous windows</sys:String>
-    <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">Restore previously opened windows after restart or crash</sys:String>
+    <sys:String x:Key="Pref_RestorePreviousWindows">Ask to restore previous windows at startup</sys:String>
+    <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">When the first File Explorer window opens after the app started, ask whether to reopen the windows that were open when the app last exited or File Explorer crashed. Only shown while "Automatically restore last session's tabs" is off; that option replaces it.</sys:String>
     <sys:String x:Key="Pref_AutoMergeWindows">Automatically merge extra windows</sys:String>
     <sys:String x:Key="Pref_AutoMergeWindowsToolTip">When several File Explorer windows are open (e.g. windows that were open before the app started, or windows restored after Explorer restarted), their tabs are moved into one window as soon as you stop using the mouse and keyboard for a moment. Windows you opened as a separate window on purpose (Ctrl+Shift, a dragged-out tab) are left alone. Only while "Window Hook" is on.</sys:String>
     <sys:String x:Key="Pref_AutoRestoreSession">Automatically restore last session's tabs</sys:String>
-    <sys:String x:Key="Pref_AutoRestoreSessionToolTip">The open folders are remembered. After a restart / sign-in, or when File Explorer crashed or was restarted, they are reopened as tabs in one window automatically. Folders you closed yourself are never reopened automatically: use "Restore last session's tabs" in the tray menu (or a shortcut) for that. Missing folders are skipped, at most 30 tabs are opened.</sys:String>
+    <sys:String x:Key="Pref_AutoRestoreSessionToolTip">The open folders are remembered. After a restart / sign-in, or when File Explorer crashed or was restarted, they are reopened as tabs in one window automatically. Folders you closed yourself are never reopened automatically: use "Restore last session's tabs" in the tray menu (or a shortcut) for that. Missing folders are skipped, at most 30 tabs are opened. Replaces "Ask to restore previous windows at startup", which is hidden while this is on.</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">Hide tray icon</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">Hide the system tray icon</sys:String>
     <sys:String x:Key="Pref_StartWithWindows">Start with Windows</sys:String>
