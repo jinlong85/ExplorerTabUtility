@@ -10,7 +10,7 @@ on:
         description: 'Version string to use (e.g., v1.0.0)'
         required: true
         type: string
-        default: 'v2.5.1-test'
+        default: 'v0.0.0-ci-test'
 
 env:
   PROJECT_NAME: ExplorerTabUtility
@@ -33,15 +33,15 @@ jobs:
       max-parallel: 6
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSBuild Environments
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
         with:
           vs-version: '17.0'  # Visual Studio 2022
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 9.0.x
 
@@ -77,17 +77,19 @@ jobs:
         shell: pwsh
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.zip_artifacts.outputs.zipName }}
           path: ${{ steps.zip_artifacts.outputs.zipName }}
 
   sign-artifacts:
     needs: build
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moves to Ubuntu 26 from 2026-10-19. This job only moves artifacts (and calls SignPath when
+    # configured), so any supported image works; 24.04 is supported until 2029.
+    runs-on: ubuntu-24.04
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
           merge-multiple: true
@@ -95,7 +97,7 @@ jobs:
       - name: Upload signing bundle to GitHub
         id: upload-unsigned-bundle
         if: env.SIGNPATH_API_TOKEN != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unsigned-bundle
           path: ./artifacts/*.zip
@@ -103,7 +105,7 @@ jobs:
       - name: Submit bundle for signing
         id: submit-signing
         if: env.SIGNPATH_API_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v1.1
+        uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ env.SIGNPATH_ORG_ID }}
@@ -118,14 +120,14 @@ jobs:
 
       - name: Upload signed artifacts
         if: env.SIGNPATH_API_TOKEN != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-artifacts
           path: ./signed-output/*.zip
 
       - name: Upload unsigned artifacts (no signing configured)
         if: env.SIGNPATH_API_TOKEN == ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-artifacts
           path: ./artifacts/*.zip
@@ -135,10 +137,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Signed Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signed-artifacts
           path: artifacts
@@ -158,7 +160,7 @@ jobs:
 
       - name: Upload unsigned installer
         id: upload-unsigned-installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PROJECT_NAME }}_${{ env.VERSION }}_Setup-unsigned
           path: artifacts/*.exe
@@ -166,7 +168,7 @@ jobs:
       - name: Submit installer for signing
         id: submit-installer-signing
         if: env.SIGNPATH_API_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v1.1
+        uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ env.SIGNPATH_ORG_ID }}
@@ -181,14 +183,14 @@ jobs:
 
       - name: Upload signed installer
         if: env.SIGNPATH_API_TOKEN != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-installer
           path: ./signed-installer/*.exe
 
       - name: Upload unsigned installer as release installer (no signing configured)
         if: env.SIGNPATH_API_TOKEN == ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: signed-installer
           path: artifacts/*.exe
@@ -201,23 +203,23 @@ jobs:
       pull-requests: read   # Required to read PRs for changelog generation
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Signed Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signed-artifacts
           path: release-artifacts
 
       - name: Download Signed Installer
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: signed-installer
           path: release-artifacts
 
       - name: Generate Changelog
         id: generate_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v6
         with:
           mode: "COMMIT"
           configurationJson: |
@@ -248,11 +250,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.PROJECT_NAME }} ${{ env.VERSION }}
           draft: true
+          # Manual (workflow_dispatch) runs are test builds: mark them as pre-release so they can never become "Latest".
+          prerelease: ${{ github.event_name == 'workflow_dispatch' }}
           body: |
             ${{ steps.generate_changelog.outputs.changelog }}
             
