@@ -19,10 +19,11 @@ public partial class SystemTrayIcon : UserControl, IDisposable
     private readonly ProfileManager _profileManager;
     private readonly HookManager _hookManager;
     private readonly Action _showWindowAction;
+    private readonly Action _showMouseHotkeysAction;
     private ICommand ProfileItemCommand { get; set; } = null!;
     private bool _savedReuseTabsState;
 
-    public SystemTrayIcon(ProfileManager profileManager, HookManager hookManager, Action showWindowAction)
+    public SystemTrayIcon(ProfileManager profileManager, HookManager hookManager, Action showWindowAction, Action showMouseHotkeysAction)
     {
         InitializeComponent();
         InitializeCommands();
@@ -33,6 +34,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         _profileManager = profileManager;
         _hookManager = hookManager;
         _showWindowAction = showWindowAction;
+        _showMouseHotkeysAction = showMouseHotkeysAction;
 
         _hookManager.OnShellInitialized += HookManager_OnShellInitialized;
         _hookManager.OnWindowHookToggled += HookManager_OnWindowHookToggled;
@@ -57,7 +59,8 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         KeyboardHookMenu.Command = new RelayCommand(_ => ToggleKeyboardHookMenu(), s => s != null && ((MenuItem)s).HasItems);
 
         MouseHookMenu.CommandParameter = MouseHookMenu;
-        MouseHookMenu.Command = new RelayCommand(_ => ToggleMouseHookMenu(), s => s != null && ((MenuItem)s).HasItems);
+        // Always clickable: without mouse shortcuts it opens the Shortcuts page with a how-to instead of being greyed out.
+        MouseHookMenu.Command = new RelayCommand(_ => OnMouseHookMenuClick());
 
         WindowHook.Command = new RelayCommand(_ => ToggleWindowHook());
         ReuseTabs.Command = new RelayCommand(_ => ToggleReuseTabs());
@@ -163,6 +166,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
     {
         PopulateHookProfiles(KeyboardHookMenu, _profileManager.GetKeyboardProfiles(), autoCheckParent);
         PopulateHookProfiles(MouseHookMenu, _profileManager.GetMouseProfiles(), autoCheckParent);
+        MouseHookMenu.SetResourceReference(ToolTipProperty, MouseHookMenu.HasItems ? "Tray_MouseHookToolTip" : "Tray_MouseHookNoProfilesToolTip");
     }
 
     public void SetTrayIconVisibility(bool visible) => TrayIcon.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
@@ -177,6 +181,25 @@ public partial class SystemTrayIcon : UserControl, IDisposable
             _hookManager.StartKeyboardHook,
             _hookManager.StopKeyboardHook
         );
+    }
+
+    private void OnMouseHookMenuClick()
+    {
+        if (!MouseHookMenu.HasItems)
+        {
+            _showMouseHotkeysAction();
+            return;
+        }
+
+        ToggleMouseHookMenu();
+    }
+
+    /// <summary>Turns the mouse hook on (after the example mouse shortcut was added).</summary>
+    public void EnableMouseHook()
+    {
+        UpdateMenuItems(autoCheckParent: false);
+        if (MouseHookMenu.HasItems && !MouseHookMenu.IsChecked)
+            ToggleMouseHookMenu();
     }
 
     private void ToggleMouseHookMenu()
@@ -295,8 +318,11 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         // No subitems are checked, uncheck the parent.
         // At least one subitem is checked, check the parent (if autoCheckParent)
         var desiredParentChecked = anyChecked && (parent.IsChecked || autoCheckParent);
-        if (desiredParentChecked != parent.IsChecked)
-            parent.Command.Execute(parent.CommandParameter);
+        if (desiredParentChecked == parent.IsChecked) return;
+
+        // Toggle directly: the mouse menu's command opens the settings when there are no mouse shortcuts.
+        if (parent == MouseHookMenu) ToggleMouseHookMenu();
+        else parent.Command.Execute(parent.CommandParameter);
     }
 
     private void OnProfileItemClick(object? sender)

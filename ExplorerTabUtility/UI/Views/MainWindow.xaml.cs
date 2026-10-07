@@ -32,7 +32,7 @@ public partial class MainWindow : Window
 
         _profileManager = new ProfileManager(ProfilesPanel);
         _hookManager = new HookManager(_profileManager);
-        _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow);
+        _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow, ShowMouseHotkeysHint);
 
         // Fix the "start with Windows" entry if the app was moved, then show the real registry state
         RegistryManager.RepairStartupPath();
@@ -72,6 +72,8 @@ public partial class MainWindow : Window
         BtnImport.Click += BtnImport_Click;
         BtnExport.Click += BtnExport_Click;
         BtnSave.Click += BtnSave_Click;
+        BtnAddMouseExample.Click += BtnAddMouseExample_Click;
+        BtnCloseMouseHint.Click += (_, _) => MouseHintPanel.Visibility = Visibility.Collapsed;
         CbAutoSaveProfiles.Checked += CbAutoSaveProfiles_CheckedChanged;
         CbAutoSaveProfiles.Unchecked += CbAutoSaveProfiles_CheckedChanged;
         CbSaveClosedHistory.Checked += CbSaveClosedHistory_CheckedChanged;
@@ -133,6 +135,7 @@ public partial class MainWindow : Window
     private void HideWindow(bool exit = false)
     {
         Dispatcher.BeginInvoke(Hide);
+        Dispatcher.BeginInvoke(() => MouseHintPanel.Visibility = Visibility.Collapsed);
 
         if (CbAutoSaveProfiles.IsChecked != true) return;
 
@@ -142,6 +145,28 @@ public partial class MainWindow : Window
     }
 
     private void BtnNewProfile_Click(object? _, RoutedEventArgs __) => _profileManager.AddProfile();
+
+    /// <summary>Tray item "Mouse Hook" without any mouse shortcut: show the Shortcuts page with a short how-to.</summary>
+    private void ShowMouseHotkeysHint()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            NavigationList.SelectedIndex = 0;
+            TxtMouseHint.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty, "Main_MouseHint");
+            MouseHintPanel.Visibility = Visibility.Visible;
+        });
+        ShowWindow();
+    }
+
+    private void BtnAddMouseExample_Click(object? _, RoutedEventArgs __)
+    {
+        var added = _profileManager.AddMouseExampleProfile();
+        _notifyIconManager.EnableMouseHook();
+
+        TxtMouseHint.SetResourceReference(System.Windows.Controls.TextBlock.TextProperty,
+            added ? "Main_MouseExampleAdded" : "Main_MouseExampleExists");
+        MouseHintPanel.Visibility = Visibility.Visible;
+    }
 
     private void BtnImport_Click(object? _, RoutedEventArgs __)
     {

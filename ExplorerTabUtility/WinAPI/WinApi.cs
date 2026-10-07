@@ -98,6 +98,16 @@ public static class WinApi
     public const int SM_SHUTTINGDOWN = 0x2000;
 
     [DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
+
+    /// <summary>The user's double-click time (Control Panel → Mouse), 500 ms if it can't be read.</summary>
+    public static int GetDoubleClickTimeMs()
+    {
+        var ms = (int)GetDoubleClickTime();
+        return ms is > 0 and <= 5_000 ? ms : 500;
+    }
+
+    [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("user32.dll")]

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Localization;
+using ExplorerTabUtility.WinAPI;
 using H.Hooks;
 
 namespace ExplorerTabUtility.UI.Views;
@@ -22,6 +23,8 @@ public partial class HotKeyProfileControl : UserControl
     private readonly Action? _keybindingHookStopped;
     private LowLevelKeyboardHook? _lowLevelKeyboardHook;
     private LowLevelMouseHook? _lowLevelMouseHook;
+    private System.Windows.Threading.DispatcherTimer? _leftClickWarningTimer;
+    private ToolTip? _leftClickWarning;
 
     // Properties
     public new bool IsEnabled
@@ -158,6 +161,15 @@ public partial class HotKeyProfileControl : UserControl
 
         if (!isMouse && !IsAllowedKeys(e.Keys.Values)) return;
 
+        // A plain single left click would fire on every click: don't record it. It may be the first click of a
+        // double-click, so the explanation only appears when no second click follows.
+        if (isMouse && !isDoubleClick && e.Keys.Values.All(k => k == Key.MouseLeft))
+        {
+            ScheduleLeftClickWarning();
+            return;
+        }
+        if (isMouse) CancelLeftClickWarning();
+
         // Prevent the key from being handled by other applications.
         e.IsHandled = true;
 
@@ -229,12 +241,63 @@ public partial class HotKeyProfileControl : UserControl
         var isDoubleClick = false;
 
         var now = Environment.TickCount;
-        if (now - _lastClickTime < 500 && _lastClickKey == currentKey)
+        if (now - _lastClickTime < WinApi.GetDoubleClickTimeMs() && _lastClickKey == currentKey)
             isDoubleClick = true;
 
         _lastClickTime = now;
         _lastClickKey = currentKey;
         return isDoubleClick;
+    }
+
+    private void ScheduleLeftClickWarning()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_leftClickWarningTimer == null)
+            {
+                _leftClickWarningTimer = new System.Windows.Threading.DispatcherTimer();
+                _leftClickWarningTimer.Tick += (_, _) =>
+                {
+                    _leftClickWarningTimer.Stop();
+                    ShowLeftClickWarning();
+                };
+            }
+
+            _leftClickWarningTimer.Stop();
+            _leftClickWarningTimer.Interval = TimeSpan.FromMilliseconds(WinApi.GetDoubleClickTimeMs() + 50);
+            _leftClickWarningTimer.Start();
+        });
+    }
+
+    private void CancelLeftClickWarning()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            _leftClickWarningTimer?.Stop();
+            if (_leftClickWarning != null) _leftClickWarning.IsOpen = false;
+        });
+    }
+
+    private void ShowLeftClickWarning()
+    {
+        if (!TxtHotKeys.IsKeyboardFocusWithin) return;
+
+        _leftClickWarning ??= new ToolTip
+        {
+            PlacementTarget = TxtHotKeys,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            MaxWidth = 360
+        };
+        _leftClickWarning.Content = new TextBlock { Text = Loc.Get("Profile_LeftClickBlocked"), TextWrapping = TextWrapping.Wrap };
+        _leftClickWarning.IsOpen = true;
+
+        var hideTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        hideTimer.Tick += (_, _) =>
+        {
+            hideTimer.Stop();
+            if (_leftClickWarning != null) _leftClickWarning.IsOpen = false;
+        };
+        hideTimer.Start();
     }
 
     // Methods
@@ -340,6 +403,8 @@ public partial class HotKeyProfileControl : UserControl
 
     private void DisposeKeybindingHooks(bool inform = true)
     {
+        CancelLeftClickWarning();
+
         if (_lowLevelKeyboardHook != null)
         {
             _lowLevelKeyboardHook.Stop();

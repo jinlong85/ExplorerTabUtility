@@ -36,6 +36,13 @@
     <sys:String x:Key="Main_BtnSaveToolTip">Persist all profile changes</sys:String>
     <sys:String x:Key="Main_AutoSave">Auto save</sys:String>
     <sys:String x:Key="Main_AutoSaveToolTip">Automatically save profiles when closing the window</sys:String>
+    <sys:String x:Key="Main_BtnAddMouseExample">Add example</sys:String>
+    <sys:String x:Key="Main_BtnAddMouseExampleToolTip">Add the mouse shortcut "Double-click empty space → Up one level" and turn on mouse shortcuts</sys:String>
+    <sys:String x:Key="MouseExample_Name">Double-click empty space → Up one level</sys:String>
+    <sys:String x:Key="Main_MouseHint">No mouse shortcuts yet. Click "Add example" to add "Double-click empty space → Up one level", or click "New" and then click a mouse button inside the Hotkeys box (double-click quickly to record a double-click).</sys:String>
+    <sys:String x:Key="Main_MouseExampleAdded">Added "Double-click empty space → Up one level" and turned on mouse shortcuts. Double-click an empty area of a folder in File Explorer to go up one level.</sys:String>
+    <sys:String x:Key="Main_MouseExampleExists">The example already exists. Mouse shortcuts are turned on.</sys:String>
+    <sys:String x:Key="Main_HintClose">Close</sys:String>
     <sys:String x:Key="Pref_GroupApplication">Application Settings</sys:String>
     <sys:String x:Key="Pref_AutoUpdate">Auto update</sys:String>
     <sys:String x:Key="Pref_AutoUpdateToolTip">Automatically check for updates on startup</sys:String>
@@ -70,8 +77,9 @@
     <sys:String x:Key="Profile_EnabledToolTip">Enable or disable this profile</sys:String>
     <sys:String x:Key="Profile_NamePlaceholder">Name</sys:String>
     <sys:String x:Key="Profile_NameToolTip">Name of the profile</sys:String>
-    <sys:String x:Key="Profile_HotKeysPlaceholder">Hotkeys</sys:String>
-    <sys:String x:Key="Profile_HotKeysToolTip">Keyboard or mouse keys to listen for. Click to record a new key combination.</sys:String>
+    <sys:String x:Key="Profile_HotKeysPlaceholder">Keys / mouse button</sys:String>
+    <sys:String x:Key="Profile_HotKeysToolTip">Keyboard or mouse keys to listen for. Click this box, then press a key combination. To use the mouse, click a mouse button inside the box; double-click quickly to record a double-click. Backspace clears it.</sys:String>
+    <sys:String x:Key="Profile_LeftClickBlocked">A single left click can't be a shortcut (it would fire on every click). Double-click quickly, or hold Ctrl / Alt / Shift while clicking.</sys:String>
     <sys:String x:Key="Profile_ScopeToolTip">Scope of the hotkeys: Global (anywhere) or only when File Explorer is focused</sys:String>
     <sys:String x:Key="Profile_ActionToolTip">Action to perform when the hotkeys are pressed</sys:String>
     <sys:String x:Key="Profile_ExpandToolTip">Show more options</sys:String>
@@ -130,6 +138,7 @@
     <sys:String x:Key="HotKeyAction_RestoreSession_Desc">Reopen the tabs of the last session in one window.</sys:String>
     <sys:String x:Key="Tray_KeyboardHookToolTip">Enable or disable keyboard shortcuts</sys:String>
     <sys:String x:Key="Tray_MouseHookToolTip">Enable or disable mouse shortcuts</sys:String>
+    <sys:String x:Key="Tray_MouseHookNoProfilesToolTip">No mouse shortcuts yet. Click to set one up.</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">Toggle automatic redirection of new Explorer windows to tabs</sys:String>
     <sys:String x:Key="Tray_ReuseTabsToolTip">When enabled, navigates to existing tabs instead of opening duplicate tabs</sys:String>
     <sys:String x:Key="Tray_MergeWindows">Merge all windows now</sys:String>
