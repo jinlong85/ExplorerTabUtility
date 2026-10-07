@@ -7,6 +7,7 @@ using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Localization;
 using ExplorerTabUtility.UI.Views;
+using H.Hooks;
 
 namespace ExplorerTabUtility.Managers;
 
@@ -103,6 +104,39 @@ public class ProfileManager
         var control = FindControlByProfile(tempProfile);
         if (control != null) control.IsEnabled = enabled;
     }
+
+    /// <summary>
+    /// Adds (and saves right away) the example mouse shortcut "Double-click empty space → Up one level".
+    /// Other unsaved edits in the panel stay unsaved. Returns false when the example already existed (it is enabled then).
+    /// </summary>
+    public bool AddMouseExampleProfile()
+    {
+        var existing = _savedProfiles.FirstOrDefault(IsMouseExample);
+        if (existing != null)
+        {
+            SetProfileEnabledFromTray(existing, true);
+            SettingsManager.HotKeyProfiles = JsonSerializer.Serialize(_savedProfiles);
+            return false;
+        }
+
+        var profile = new HotKeyProfile(Loc.Get("MouseExample_Name"), [Key.MouseLeft], HotKeyAction.NavigateUp, scope: HotkeyScope.FileExplorer)
+        {
+            IsMouse = true,
+            IsDoubleClick = true
+        };
+
+        var tempProfile = profile.Clone();
+        _tempProfiles.Add(tempProfile);
+        _profilePanel.Children.Add(new HotKeyProfileControl(tempProfile, RemoveProfile, KeybindingHookStarted, KeybindingHookStopped));
+
+        _savedProfiles.Add(profile);
+        SettingsManager.HotKeyProfiles = JsonSerializer.Serialize(_savedProfiles);
+        return true;
+    }
+
+    private static bool IsMouseExample(HotKeyProfile p) =>
+        p is { IsMouse: true, IsDoubleClick: true, Action: HotKeyAction.NavigateUp, Scope: HotkeyScope.FileExplorer, HotKeys: { Length: 1 } keys } &&
+        keys[0] == Key.MouseLeft; // (no list pattern: needs System.Index, which .NET Framework 4.8.1 doesn't have)
 
     public IReadOnlyList<HotKeyProfile> GetProfiles() => _savedProfiles.AsReadOnly();
     public IEnumerable<HotKeyProfile> GetKeyboardProfiles() => _savedProfiles.Where(p => !p.IsMouse);

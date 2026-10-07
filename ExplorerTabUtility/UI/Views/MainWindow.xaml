@@ -172,6 +172,7 @@
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
 
@@ -187,6 +188,8 @@
                                                     ToolTip="{DynamicResource Main_BtnExportToolTip}" />
                                             <Button x:Name="BtnSave" Content="{DynamicResource Main_BtnSave}" Style="{StaticResource FlatButtonStyle}"
                                                     ToolTip="{DynamicResource Main_BtnSaveToolTip}" />
+                                            <Button x:Name="BtnAddMouseExample" Content="{DynamicResource Main_BtnAddMouseExample}" Style="{StaticResource FlatButtonStyle}"
+                                                    ToolTip="{DynamicResource Main_BtnAddMouseExampleToolTip}" />
                                         </StackPanel>
 
                                         <!-- Save on Exit Toggle -->
@@ -195,8 +198,21 @@
                                                   ToolTip="{DynamicResource Main_AutoSaveToolTip}" />
                                     </DockPanel>
 
+                                    <!-- Mouse shortcut hint (shown when opened from the tray item "Mouse Hook" without mouse shortcuts) -->
+                                    <Border x:Name="MouseHintPanel" Grid.Row="1" Margin="16,0,16,4" Padding="12,8"
+                                            CornerRadius="4" BorderThickness="1" BorderBrush="{StaticResource AccentBrush}"
+                                            Background="{StaticResource ControlBackgroundBrush}" Visibility="Collapsed">
+                                        <DockPanel LastChildFill="True">
+                                            <Button x:Name="BtnCloseMouseHint" DockPanel.Dock="Right" Content="&#x2715;"
+                                                    Style="{StaticResource IconButtonStyle}" VerticalAlignment="Top" Margin="8,0,0,0"
+                                                    ToolTip="{DynamicResource Main_HintClose}" />
+                                            <TextBlock x:Name="TxtMouseHint" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" Text="{DynamicResource Main_MouseHint}" />
+                                        </DockPanel>
+                                    </Border>
+
                                     <!-- Profiles Panel -->
-                                    <ScrollViewer Grid.Row="1" Margin="16,8,4,4"
+                                    <ScrollViewer Grid.Row="2" Margin="16,8,4,4"
                                                   VerticalScrollBarVisibility="Visible"
                                                   Style="{StaticResource CustomScrollViewerStyle}">
                                         <StackPanel x:Name="ProfilesPanel" />

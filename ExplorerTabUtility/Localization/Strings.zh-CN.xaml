@@ -36,6 +36,13 @@
     <sys:String x:Key="Main_BtnSaveToolTip">保存对快捷键配置的所有更改</sys:String>
     <sys:String x:Key="Main_AutoSave">自动保存</sys:String>
     <sys:String x:Key="Main_AutoSaveToolTip">关闭窗口时自动保存快捷键配置</sys:String>
+    <sys:String x:Key="Main_BtnAddMouseExample">添加示例</sys:String>
+    <sys:String x:Key="Main_BtnAddMouseExampleToolTip">添加鼠标快捷键“双击空白处 → 返回上一级”，并启用鼠标快捷键</sys:String>
+    <sys:String x:Key="MouseExample_Name">双击空白处 → 返回上一级</sys:String>
+    <sys:String x:Key="Main_MouseHint">还没有鼠标快捷键。点击“添加示例”可添加“双击空白处 → 返回上一级”；也可以点击“新建”，然后在“快捷键”框内单击鼠标键录制（快速双击即录制双击）。</sys:String>
+    <sys:String x:Key="Main_MouseExampleAdded">已添加“双击空白处 → 返回上一级”并启用鼠标快捷键。在资源管理器中双击文件夹的空白处即可返回上一级。</sys:String>
+    <sys:String x:Key="Main_MouseExampleExists">该示例已存在，已启用鼠标快捷键。</sys:String>
+    <sys:String x:Key="Main_HintClose">关闭</sys:String>
     <sys:String x:Key="Pref_GroupApplication">应用程序设置</sys:String>
     <sys:String x:Key="Pref_AutoUpdate">自动更新</sys:String>
     <sys:String x:Key="Pref_AutoUpdateToolTip">启动时自动检查更新</sys:String>
@@ -70,8 +77,9 @@
     <sys:String x:Key="Profile_EnabledToolTip">启用或禁用此快捷键配置</sys:String>
     <sys:String x:Key="Profile_NamePlaceholder">名称</sys:String>
     <sys:String x:Key="Profile_NameToolTip">快捷键配置的名称</sys:String>
-    <sys:String x:Key="Profile_HotKeysPlaceholder">快捷键</sys:String>
-    <sys:String x:Key="Profile_HotKeysToolTip">要监听的键盘或鼠标按键。点击此框后按下新的组合键即可录制。</sys:String>
+    <sys:String x:Key="Profile_HotKeysPlaceholder">按键 / 鼠标键</sys:String>
+    <sys:String x:Key="Profile_HotKeysToolTip">要监听的键盘按键或鼠标键。单击此框后按下组合键即可录制。在框内单击鼠标键录制，快速双击录制双击。按退格键清除。</sys:String>
+    <sys:String x:Key="Profile_LeftClickBlocked">不能把左键单击设为快捷键（每次点击都会触发）。请快速双击，或按住 Ctrl / Alt / Shift 再单击。</sys:String>
     <sys:String x:Key="Profile_ScopeToolTip">快捷键的生效范围：全局（任何位置）或仅在文件资源管理器处于焦点时</sys:String>
     <sys:String x:Key="Profile_ActionToolTip">按下快捷键时要执行的操作</sys:String>
     <sys:String x:Key="Profile_ExpandToolTip">显示更多选项</sys:String>
@@ -130,6 +138,7 @@
     <sys:String x:Key="HotKeyAction_RestoreSession_Desc">在一个窗口中重新打开上次的标签页。</sys:String>
     <sys:String x:Key="Tray_KeyboardHookToolTip">启用或禁用键盘快捷键</sys:String>
     <sys:String x:Key="Tray_MouseHookToolTip">启用或禁用鼠标快捷键</sys:String>
+    <sys:String x:Key="Tray_MouseHookNoProfilesToolTip">还没有鼠标快捷键，点击进行设置</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">开启或关闭：自动把新打开的资源管理器窗口转为标签页</sys:String>
     <sys:String x:Key="Tray_ReuseTabsToolTip">开启后，如果位置已在某个标签页中打开，就直接切换过去，而不是重复打开</sys:String>
     <sys:String x:Key="Tray_MergeWindows">立即合并所有窗口</sys:String>
