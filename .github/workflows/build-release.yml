@@ -38,7 +38,7 @@ jobs:
       - name: Setup MSBuild Environments
         uses: microsoft/setup-msbuild@v3
         with:
-          vs-version: '17.0'  # Visual Studio 2022
+          vs-version: '17.0'  # minimum version (VS 2022); windows-latest currently ships a newer Visual Studio
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6

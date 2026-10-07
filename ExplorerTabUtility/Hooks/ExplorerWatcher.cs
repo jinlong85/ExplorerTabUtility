@@ -171,11 +171,6 @@ public partial class ExplorerWatcher : IHook
                 h => h != activeTab);
         }
     }
-    public void SelectLastTab(nint windowHandle)
-    {
-        var count = Helper.GetAllExplorerTabs(windowHandle).Count();
-        SelectTabByIndex(windowHandle, count - 1);
-    }
     public void SelectTabByIndex(nint windowHandle, int index)
     {
         // Windows 11 Explorer crashes (and restarts the taskbar/desktop) when it gets this command for a tab position its
