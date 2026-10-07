@@ -134,9 +134,11 @@
     <sys:String x:Key="About_StarOnGitHub">Star on GitHub</sys:String>
     <sys:String x:Key="About_SupportTitle">Support the Project</sys:String>
     <sys:String x:Key="About_SupportText">If you find this utility helpful, consider supporting its development through one of these options:</sys:String>
-    <sys:String x:Key="About_Developer">Developer</sys:String>
+    <sys:String x:Key="About_Developer">Original Developer</sys:String>
     <sys:String x:Key="About_SupportersTitle">Current Supporters</sys:String>
     <sys:String x:Key="About_SupportersText">Thank you to all the amazing people who support this project!</sys:String>
     <sys:String x:Key="About_BeFirstSupporter">Be the first to support this project!</sys:String>
+    <sys:String x:Key="About_ForkCredit">Simplified Chinese build maintained by jinlong85 · Original project by w4po</sys:String>
+    <sys:String x:Key="About_ForkCreditToolTip">Open the original Explorer Tab Utility project by w4po</sys:String>
     <sys:String x:Key="About_SupportHelps">Your support helps keep this project alive</sys:String>
 </ResourceDictionary>

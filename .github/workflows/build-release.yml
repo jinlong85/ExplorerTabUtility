@@ -10,7 +10,7 @@ on:
         description: 'Version string to use (e.g., v1.0.0)'
         required: true
         type: string
-        default: 'v2.4.0-test'
+        default: 'v2.5.1-test'
 
 env:
   PROJECT_NAME: ExplorerTabUtility
@@ -18,6 +18,9 @@ env:
   SIGNPATH_PROJECT_SLUG: ExplorerTabUtility
   SIGNPATH_POLICY_SLUG: release-signing
   VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+  # Code signing (SignPath) only runs when the SIGNPATH_API_TOKEN secret exists (the original repo).
+  # Without it (e.g. in a fork) the unsigned build is released instead.
+  SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
 
 jobs:
   build:
@@ -44,8 +47,11 @@ jobs:
 
       - name: Build Project
         run: |
+          # Assembly version comes from the tag (v2.5.1-zh => 2.5.1) so the updater compares versions correctly.
+          $numericVersion = ("${{ env.VERSION }}" -replace '^[vV]', '') -replace '[-+ ].*$', ''
+          if ($numericVersion -notmatch '^\d+(\.\d+){1,3}$') { throw "Tag/version '${{ env.VERSION }}' must look like v2.5.1 or v2.5.1-zh" }
           $outputDir = "../publish/${{ matrix.framework }}/${{ matrix.arch }}"
-          msbuild "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" /restore /t:Publish /p:Configuration=Release /p:TargetFramework=${{ matrix.framework }} /p:RuntimeIdentifier=win-${{ matrix.arch }} /p:PublishDir=$outputDir /p:DebugType=none
+          msbuild "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" /restore /t:Publish /p:Configuration=Release /p:TargetFramework=${{ matrix.framework }} /p:RuntimeIdentifier=win-${{ matrix.arch }} /p:PublishDir=$outputDir /p:DebugType=none /p:Version=$numericVersion
         shell: pwsh
 
       - name: Zip Artifacts
@@ -88,6 +94,7 @@ jobs:
 
       - name: Upload signing bundle to GitHub
         id: upload-unsigned-bundle
+        if: env.SIGNPATH_API_TOKEN != ''
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-bundle
@@ -95,6 +102,7 @@ jobs:
 
       - name: Submit bundle for signing
         id: submit-signing
+        if: env.SIGNPATH_API_TOKEN != ''
         uses: signpath/github-action-submit-signing-request@v1.1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -109,10 +117,18 @@ jobs:
             version: "${{ env.VERSION }}"
 
       - name: Upload signed artifacts
+        if: env.SIGNPATH_API_TOKEN != ''
         uses: actions/upload-artifact@v4
         with:
           name: signed-artifacts
           path: ./signed-output/*.zip
+
+      - name: Upload unsigned artifacts (no signing configured)
+        if: env.SIGNPATH_API_TOKEN == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-artifacts
+          path: ./artifacts/*.zip
 
   build-installer:
     needs: sign-artifacts
@@ -149,6 +165,7 @@ jobs:
 
       - name: Submit installer for signing
         id: submit-installer-signing
+        if: env.SIGNPATH_API_TOKEN != ''
         uses: signpath/github-action-submit-signing-request@v1.1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -163,10 +180,18 @@ jobs:
             version: "${{ env.VERSION }}"
 
       - name: Upload signed installer
+        if: env.SIGNPATH_API_TOKEN != ''
         uses: actions/upload-artifact@v4
         with:
           name: signed-installer
           path: ./signed-installer/*.exe
+
+      - name: Upload unsigned installer as release installer (no signing configured)
+        if: env.SIGNPATH_API_TOKEN == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-installer
+          path: artifacts/*.exe
 
   create-release:
     needs: [ sign-artifacts, build-installer ]

@@ -30,6 +30,8 @@ on:
 
 jobs:
   publish:
+    # Package managers only list the original project; never publish from forks.
+    if: github.repository == 'w4po/ExplorerTabUtility'
     runs-on: windows-latest
     env:
       CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}

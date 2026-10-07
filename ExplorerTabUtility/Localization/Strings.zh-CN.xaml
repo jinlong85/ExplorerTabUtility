@@ -134,9 +134,11 @@
     <sys:String x:Key="About_StarOnGitHub">在 GitHub 上加星标</sys:String>
     <sys:String x:Key="About_SupportTitle">支持本项目</sys:String>
     <sys:String x:Key="About_SupportText">如果你觉得这个工具有用，可以通过以下方式支持它的开发：</sys:String>
-    <sys:String x:Key="About_Developer">开发者</sys:String>
+    <sys:String x:Key="About_Developer">原作者</sys:String>
     <sys:String x:Key="About_SupportersTitle">当前支持者</sys:String>
     <sys:String x:Key="About_SupportersText">感谢所有支持本项目的朋友！</sys:String>
     <sys:String x:Key="About_BeFirstSupporter">成为第一个支持本项目的人吧！</sys:String>
+    <sys:String x:Key="About_ForkCredit">简体中文版由 jinlong85 维护 · 原项目作者 w4po</sys:String>
+    <sys:String x:Key="About_ForkCreditToolTip">打开 w4po 的 Explorer Tab Utility 原项目</sys:String>
     <sys:String x:Key="About_SupportHelps">你的支持能让这个项目持续下去</sys:String>
 </ResourceDictionary>

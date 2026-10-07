@@ -410,6 +410,19 @@
                                    HorizontalAlignment="Center"
                                    Margin="0,0,0,4" />
 
+                        <!-- Credit: this build is a fork of the original project by w4po -->
+                        <TextBlock Text="{DynamicResource About_ForkCredit}"
+                                   ToolTip="{DynamicResource About_ForkCreditToolTip}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontSize="12"
+                                   Opacity="0.85"
+                                   Cursor="Hand"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,8"
+                                   MouseLeftButtonUp="OpenUpstreamProjectPage" />
+
                         <Button x:Name="BtnGitHub"
                                 Style="{StaticResource GitHubButtonStyle}"
                                 Click="OpenProjectPage">

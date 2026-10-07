@@ -6,15 +6,16 @@
         <Nullable>enable</Nullable>
         <UseWPF>True</UseWPF>
         <ApplicationIcon>Icon.ico</ApplicationIcon>
-        <Version>2.5.0</Version>
+        <!-- 2.5.1 = first release of the Simplified Chinese fork (jinlong85). Release builds override it from the git tag. -->
+        <Version>2.5.1</Version>
         <LangVersion>latest</LangVersion>
         <Title>Explorer Tab Utility</Title>
         <Authors>w4po</Authors>
         <Company>$(AssemblyName)</Company>
         <Description>Explorer Tab Utility: Force new windows to tabs. Streamline navigation!</Description>
         <Copyright>Copyright © 2025 w4po</Copyright>
-        <PackageProjectUrl>https://github.com/w4po/ExplorerTabUtility</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/w4po/ExplorerTabUtility</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/jinlong85/ExplorerTabUtility</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/jinlong85/ExplorerTabUtility</RepositoryUrl>
         <!-- Only ship the Chinese satellite resources of dependencies (e.g. the AutoUpdater.NET update dialog). -->
         <SatelliteResourceLanguages>zh</SatelliteResourceLanguages>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
