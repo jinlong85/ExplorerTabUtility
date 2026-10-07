@@ -48,15 +48,6 @@ public static class Helper
         }, cancellationToken);
     }
 
-    public static T DoUntilNotDefault<T>(Func<T> action, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
-    {
-        return DoUntilCondition(
-            action,
-            result => !EqualityComparer<T?>.Default.Equals(result, default),
-            timeMs,
-            sleepMs,
-            cancellationToken);
-    }
     public static void DoUntilTimeEnd(Action action, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
         DoUntilCondition(action, static () => false, timeMs, sleepMs, cancellationToken);
@@ -89,21 +80,6 @@ public static class Helper
 
         return action();
     }
-    public static void DoIfCondition(Action action, Func<bool> predicate, bool justOnce = false, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
-    {
-        var startTicks = Stopwatch.GetTimestamp();
-
-        while (!cancellationToken.IsCancellationRequested && !IsTimeUp(startTicks, timeMs))
-        {
-            if (predicate())
-            {
-                action();
-
-                if (justOnce) return;
-            }
-            Thread.Sleep(sleepMs);
-        }
-    }
     public static Task<T> DoUntilNotDefaultAsync<T>(Func<Task<T>> action, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
         return DoUntilConditionAsync(
@@ -121,10 +97,6 @@ public static class Helper
             timeMs,
             sleepMs,
             cancellationToken);
-    }
-    public static Task DoUntilTimeEndAsync(Func<Task> action, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
-    {
-        return DoUntilConditionAsync(action, static () => false, timeMs, sleepMs, cancellationToken);
     }
     public static async Task DoUntilConditionAsync(Func<Task> action, Func<bool> predicate, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
@@ -168,21 +140,6 @@ public static class Helper
         }
 
         return await action();
-    }
-    public static async Task DoIfConditionAsync(Func<Task> action, Func<bool> predicate, bool justOnce = false, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
-    {
-        var startTicks = Stopwatch.GetTimestamp();
-
-        while (!cancellationToken.IsCancellationRequested && !IsTimeUp(startTicks, timeMs))
-        {
-            if (predicate())
-            {
-                await action();
-
-                if (justOnce) return;
-            }
-            await Task.Delay(sleepMs);
-        }
     }
 
     public static bool IsTimeUp(long startTicks, int timeMs)
@@ -271,10 +228,6 @@ public static class Helper
         var role = accObj.get_accRole(0);
         return role is 0x21; //IAccessible.Role:list (ROLE_SYSTEM_LIST 0x21)
     }
-    public static bool IsFileExplorerTab(nint tab)
-    {
-        return tab != 0 && WinApi.IsWindowHasClassName(tab, "ShellTabWindowClass");
-    }
     public static bool IsFileExplorerWindow(nint window)
     {
         return window != 0 && WinApi.IsWindowHasClassName(window, "CabinetWClass");
@@ -283,13 +236,6 @@ public static class Helper
     {
         foregroundWindow = WinApi.GetForegroundWindow();
         return IsFileExplorerWindow(foregroundWindow);
-    }
-    public static nint GetAnotherExplorerWindow(nint currentWindow)
-    {
-        return currentWindow == 0
-            ? WinApi.FindWindow("CabinetWClass", null)
-            : GetAllExplorerWindows()
-                .FirstOrDefault(window => window != currentWindow);
     }
     public static Task<nint> ListenForNewExplorerWindowAsync(IReadOnlyCollection<nint> currentWindows, int searchTimeMs = 1000)
     {
@@ -300,22 +246,6 @@ public static class Helper
             searchTimeMs);
     }
 
-    public static nint ListenForNewExplorerTab(IReadOnlyCollection<nint> currentTabs, int searchTimeMs = 1000)
-    {
-        return DoUntilNotDefault(() =>
-                GetAllExplorerTabs()
-                    .Except(currentTabs)
-                    .FirstOrDefault(),
-            searchTimeMs);
-    }
-    public static Task<nint> ListenForNewExplorerTabAsync(IReadOnlyCollection<nint> currentTabs, int searchTimeMs = 1000)
-    {
-        return DoUntilNotDefaultAsync(() =>
-                GetAllExplorerTabs()
-                    .Except(currentTabs)
-                    .FirstOrDefault(),
-            searchTimeMs);
-    }
     public static Task<nint> ListenForNewExplorerTabAsync(nint window, IReadOnlyCollection<nint> currentTabs, int searchTimeMs = 1000)
     {
         return DoUntilNotDefaultAsync(() =>
@@ -323,15 +253,6 @@ public static class Helper
                     .Except(currentTabs)
                     .FirstOrDefault(),
             searchTimeMs);
-    }
-    public static List<nint> GetAllExplorerTabs()
-    {
-        var tabs = new List<nint>();
-
-        foreach (var window in GetAllExplorerWindows())
-            tabs.AddRange(GetAllExplorerTabs(window));
-
-        return tabs;
     }
     public static IEnumerable<nint> GetAllExplorerTabs(nint window)
     {

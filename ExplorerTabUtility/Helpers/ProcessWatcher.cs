@@ -57,26 +57,6 @@ public class ProcessWatcher : IDisposable
         _scanTimer = new Timer(ScanForProcesses, null, TimeSpan.Zero, _scanInterval);
     }
 
-    /// <summary>
-    /// Pauses the monitoring of processes
-    /// </summary>
-    public void Pause()
-    {
-        if (_disposed) return;
-        _isMonitoring = false;
-        _scanTimer.Change(Timeout.Infinite, Timeout.Infinite);
-    }
-
-    /// <summary>
-    /// Resumes the monitoring of processes
-    /// </summary>
-    public void Resume()
-    {
-        if (_disposed) return;
-        _isMonitoring = true;
-        _scanTimer.Change(TimeSpan.Zero, _scanInterval);
-    }
-
     private void ScanForProcesses(object? state)
     {
         if (_disposed || !_isMonitoring) return;

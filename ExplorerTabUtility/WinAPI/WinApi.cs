@@ -42,9 +42,6 @@ public static class WinApi
     public static extern nint GetParent(nint hWnd);
 
     [DllImport("user32.dll", SetLastError = true)]
-    public static extern nint FindWindow(string lpClassName, string? lpWindowName);
-
-    [DllImport("user32.dll", SetLastError = true)]
     public static extern nint FindWindowEx(nint parentHandle, nint childAfter, string className, string? windowTitle);
 
     [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "MapVirtualKeyW")]

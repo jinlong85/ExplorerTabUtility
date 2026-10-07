@@ -20,7 +20,6 @@ public static class KeyboardSimulator
         VirtualKey.RWin
     ];
 
-    public static bool IsModifierKey(VirtualKey keyCode) => ModifierKeys.Contains(keyCode);
     public static bool IsExtendedKey(VirtualKey keyCode)
     {
         return keyCode
