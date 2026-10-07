@@ -7,7 +7,7 @@
         <UseWPF>True</UseWPF>
         <ApplicationIcon>Icon.ico</ApplicationIcon>
         <!-- 2.5.1 = first release of the Simplified Chinese fork (jinlong85); 2.5.2 = automatic merging of extra windows. Release builds override it from the git tag. -->
-        <Version>2.5.3</Version>
+        <Version>2.5.4</Version>
         <LangVersion>latest</LangVersion>
         <Title>Explorer Tab Utility</Title>
         <Authors>w4po</Authors>
