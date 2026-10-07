@@ -22,6 +22,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      # The UI strings are edited directly in Localization/Strings.*.xaml: every language must have the same keys and
+      # {0}/{1} placeholders as Strings.en-US.xaml (see tools/check_strings.py).
+      - name: Check UI strings
+        shell: pwsh
+        run: python tools/check_strings.py
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v3
 

@@ -1,439 +1,131 @@
-# Explorer Tab Utility
+# Explorer Tab Utility 简体中文版
 
 > [!TIP]
-> Force new File Explorer windows to open as tabs in Windows 11, making your workflow cleaner and more organized!
+> 在 Windows 11 中，让新打开的资源管理器窗口自动变成标签页，桌面不再被一堆窗口挤满。
+
+[English README](README.en.md)
 
 <div align="center">
-  <img src="https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/ExplorerTabUtilityLogo.gif" alt="Explorer Tab Utility Logo">
-  
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  <img src="https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/ExplorerTabUtilityLogo.gif" alt="Explorer Tab Utility">
+
+  [![最新版本](https://img.shields.io/github/v/release/jinlong85/ExplorerTabUtility?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC)](https://github.com/jinlong85/ExplorerTabUtility/releases/latest)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
   [![Windows 11](https://img.shields.io/badge/Windows%2011-22H2+-blue.svg)](https://www.microsoft.com/windows/windows-11)
-  [![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)](https://dotnet.microsoft.com/download)
-  [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8.1-purple.svg)](https://dotnet.microsoft.com/download/dotnet-framework)
 </div>
+
+本项目是 [w4po/ExplorerTabUtility](https://github.com/w4po/ExplorerTabUtility)（作者 w4po，MIT 许可）的**分支（fork）**，在原版基础上做了完整的简体中文界面，并增加和修复了一些功能（见下文）。原版的功能全部保留。
 
 > [!IMPORTANT]
-> This application requires Windows 11 (22H2 Build 22621 or later) with the File Explorer Tabs feature.
+> 需要 Windows 11 22H2（版本 22621）或更高版本，也就是资源管理器自带标签页功能的版本。
 
-## 🤔 Why Explorer Tab Utility?
+## 📥 下载与安装
 
-<div align="center">
-  <img src="https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/TheWhy.png" alt="Why use Explorer Tab Utility">
-</div>
+到 **[Releases（最新版本）](https://github.com/jinlong85/ExplorerTabUtility/releases/latest)** 页面下载。版本号带 `-zh` 的就是本中文版。
 
-Say goodbye to cluttered desktops with multiple Explorer windows! Explorer Tab Utility automatically converts new windows into tabs, providing a cleaner and more organized file management experience.
+| 文件 | 适合谁 |
+| --- | --- |
+| `ExplorerTabUtility_v…-zh_Setup.exe` | **不确定选哪个就用它**：安装程序，安装到当前用户，带开始菜单和卸载入口 |
+| `…_x64_Net9.0_FrameworkDependent.zip` | 免安装版，体积小，需要先安装 [.NET 9 桌面运行时](https://dotnet.microsoft.com/download/dotnet/9.0)（x64） |
+| `…_x64_NetFW4.8.1.zip` | 免安装版，使用 Windows 自带的 .NET Framework 4.8.1，不需要额外安装运行时 |
+| `…_arm64_…` / `…_x86_…` | ARM 设备（如骁龙笔记本）/ 32 位系统用对应的版本 |
 
-## ✨ Features
-
-<details>
-<summary>🔄 Automatic Window to Tab Conversion</summary>
-
-- Seamlessly converts new Explorer windows into tabs
-- Switches to existing tabs if path is already opened
-- Supports virtual desktop switching with a hotkey
-- Supports attaching/detaching tabs
-- Handles "Show in folder" file selection elegantly
-- Handles opening multiple tabs at once
-
-**See it in action:**
-![Window to tab conversion](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/WindowToTab.gif)
-</details>
-
-<details>
-<summary>🖨️ Duplicate Current Tab</summary>
-
-- Quickly duplicate the current tab/window
-- Choose whether to duplicate as a tab or new window (toggle `Tab` option)
-- Preserves the current location and selected items
-
-**See it in action:**
-![Duplicate current tab](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/DuplicateTab.gif)
-</details>
-
-<details>
-<summary>♻️ Reopen Closed Tabs</summary>
-
-- Reopen previously closed tabs/windows
-- Choose whether to reopen as a tab or new window (toggle `Tab` option)
-- Restores the exact location and selected items
-- History is saved across application restarts (enable "Save closed history" in settings)
-
-**See it in action:**
-![Reopen closed tabs](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/ReopenClosedTab.gif)
-</details>
-
-<details>
-<summary>🔄 Restore Previous Windows</summary>
-
-- Automatically restore previously opened windows if File-Explorer restart/crash or system reboot
-- Configurable via "Restore previous windows" setting
-- Confirmation dialog allows you to choose whether to restore windows on first launch
-
-![Restore Previous Windows](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/RestorePrevious.png)
-</details>
-
-<details>
-<summary>📋 Detach & Snap Windows</summary>
-
-- Detach current tab to a new window
-- Snap windows to screen edges (right/left/top/bottom)
-- Chain multiple actions with a single hotkey
-- Example setup (CTRL + Q):
-  1. First profile: Detach current tab
-  2. Second profile: Snap original window to the left
-  3. Third profile: Snap new window to the right (with customizable delay)
-- Customize delays to match your system's performance
-
-**See it in action:**
-![Detach & Snap](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/DetachSnap.gif)
-</details>
-
-<details>
-<summary>⬅️ Navigate Back & Forward</summary>
-
-- Navigate back/forward/up in File Explorer using:
-  - Keyboard shortcuts (customizable)
-  - Mouse clicks on any empty space in the folder
-- Perfect for quick navigation between directories
-
-**See it in action:**
-![Navigate back/up](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/NavigateBack.gif)
-</details>
-
-<details>
-<summary>📁 Custom Path Navigation</summary>
-
-- Assign hotkeys to quickly open your favorite locations
-- Choose whether to open as a tab or new window (toggle `Tab` option)
-- Supports multiple formats:
-  - Standard paths: `C:\Users\Documents`
-  - Environment variables: `%USERPROFILE%\Downloads`
-  - Windows CLSID paths: `{A8CDFF1C-4878-43be-B5FD-F8091C1C60D0}` (Special Folders)
-  - Programs and files: `C:\file.txt`
-  - URLs: `https://github.com/w4po/ExplorerTabUtility` (opens in default browser)
-- Perfect for frequently accessed locations
-- Instant access to system folders using CLSIDs
-
-**See it in action:**
-![Custom location](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/CustomLocation.gif)
-</details>
-
-<details>
-<summary>🔍 Tab Search/Switcher</summary>
-
-- Quickly find and switch between open Explorer tabs/windows
-- Search by typing part of a folder name or path
-- Keyboard navigation with up/down arrows and Enter to select
-- Special modifiers for different actions:
-  - Default: Switch to existing tab or open location in a new tab
-  - SHIFT key: Open selected location in a new window instead of a tab
-  - CTRL key: Duplicate the tab even if it already exists
-- Clear recently closed windows history with a single click
-
-![Tab Search](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/TabSearch.gif)
-</details>
-
-<details>
-<summary>🪟 Force New Window with Ctrl+Shift</summary>
-
-- Hold Ctrl+Shift while opening a location to force it to open as a new window
-- Temporarily overrides the window hook and tab reuse settings
-- Perfect for when you need a separate window without disabling the tab functionality
-</details>
-
-<details>
-<summary>⚡ Performance & Reliability</summary>
-
-- Lightweight and resource-efficient
-- Fast and responsive tab creation
-- Stable COM-based implementation
-- Reliable window state management
-</details>
-
-## 🚀 Getting Started
-
-1. Download the latest version from the [Releases](https://github.com/w4po/ExplorerTabUtility/releases) page or install it via `winget` or `choco`:
-    ```powershell
-    winget install w4po.ExplorerTabUtility --interactive
-    ```
-    ```powershell
-    choco install explorertabutility --version 2.5.0 --params "/interactive"
-    ```
-2. Run the application
-3. Look for the tray icon and you're ready to go!
-
-    ![Menu](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/Menu.png)
-
-## ⚙️ Configuration
+使用方法：
+1. 运行安装程序，或者把 zip 解压到一个固定的文件夹（例如 `D:\Tools\ExplorerTabUtility`），然后运行 `ExplorerTabUtility.exe`。
+2. 程序在**系统托盘**运行（任务栏右下角，可能在“^”里面）。双击托盘图标打开设置窗口，右键打开菜单。
+3. 在 **首选项** 里可以勾选 **开机自动启动**。
 
 > [!NOTE]
-> The application runs in the system tray minimized by default.
-> To configure it, double-click or right-click the tray icon.
+> - 本中文版的安装包**没有代码签名**，第一次运行时 Windows SmartScreen 可能提示“已保护你的电脑”，点“更多信息 → 仍要运行”即可。杀毒软件也可能因为程序使用了键盘/鼠标钩子而误报，源代码完全公开，可以自行检查或编译。
+> - 如果之前安装过原版（英文版），直接安装本版本会覆盖升级，设置会保留（都保存在 `%APPDATA%\ExplorerTabUtility\settings.json`）。
+> - 开启 **自动更新** 后，程序会从**本仓库**检查新版本并更新，不会被更新回原版英文版。
+> - winget / Chocolatey 上的 `w4po.ExplorerTabUtility` / `explorertabutility` 安装的是**原版英文版**，不是本中文版。
 
-<details>
-<summary>🔧 General Settings</summary>
+## ✨ 功能
 
-- **Window Hook**: Enable/disable automatic window-to-tab conversion
-- **Reuse Tabs**: Switch to existing tabs instead of opening duplicates
-- **Keyboard Hook**: Enable/disable keyboard shortcuts
-- **Mouse Hook**: Enable/disable mouse navigation features
-- **Startup**: Configure automatic startup with Windows
-- **Settings Persistence**:
-  * Your settings are stored in a JSON file located in your AppData folder:
-  ```
-  %APPDATA%\ExplorerTabUtility\settings.json
-  ```
-  If you need to reset to default settings, simply delete the settings.json file.
-</details>
+### 原版功能
+- **窗口转标签**：新打开的资源管理器窗口自动变成已有窗口里的标签页；“在文件夹中显示”时会选中对应文件；一次打开多个文件夹也能正确处理。
+- **复用标签页**：要打开的位置已经在某个标签页中打开时，直接切换过去，不重复打开。
+- **复制标签页**、**重新打开已关闭**（可在首选项里开启“保存关闭历史”，重启后也能找回）。
+- **标签页搜索**：输入文件夹名快速查找并切换标签页（按住 Shift 在新窗口打开，按住 Ctrl 强制再开一个）。
+- **分离标签页**、**贴靠到左/右/上/下**：多个快捷键配置可以组合成一个快捷键，例如“分离当前标签页并左右分屏”。
+- **打开指定位置**：给常用文件夹、环境变量路径（如 `%USERPROFILE%\Downloads`）、特殊文件夹 CLSID、文件或网址分配快捷键。
+- **后退 / 前进 / 向上一级**：可以用键盘快捷键，也可以用鼠标在文件夹空白处点击（见下面的“鼠标快捷键”）。
+- 按住 **Ctrl+Shift** 打开文件夹时，强制以新窗口打开。
+- **设为目标窗口**：指定新标签页要放进哪个窗口（多窗口、多虚拟桌面时有用）。
 
-<details>
-<summary>⚙️ Preferences</summary>
+### 中文版新增和修复
+- **完整的简体中文界面**：在 **首选项 → 界面语言** 中可以选择“跟随系统 / 简体中文 / English”。
+- **修复重复标签页**：从其他程序（如浏览器的“在文件夹中显示”、解压软件等）打开一个已经打开的文件夹时，不再出现两个一样的标签页，而是切换到已有的标签页并选中文件。
+- **修复标签页切换和崩溃**：切换到后台标签页更可靠；修复了在标签页还没创建完时发送“切换到第 N 个标签”导致资源管理器崩溃（任务栏和桌面一起重启）的问题。
+- **开机自动启动**：首选项和托盘菜单里都可以设置。程序被移动到别的文件夹后，会自动修正启动项路径。
+- **自动合并多余窗口**（首选项 → “自动合并多余窗口”，默认开启）：同时开着多个资源管理器窗口时（例如程序启动前已经开着的窗口），在你停下操作后自动把它们的标签页移到同一个窗口。特意以单独窗口打开的（Ctrl+Shift、拖出来的标签页）不会被合并。托盘菜单里还有“立即合并所有窗口”。
+- **自动恢复上次的标签页**（首选项 → “自动恢复上次的标签页”，默认开启）：
+  - 重启电脑 / 重新登录后，或者资源管理器崩溃 / 重启后，之前打开的文件夹会自动作为标签页回到一个窗口中。
+  - **你自己关掉的窗口不会被自动重新打开**，需要时用托盘菜单（或快捷键）里的 **恢复上次的标签页** 找回。
+  - 已经不存在的文件夹会跳过，最多恢复 30 个标签页。开启后，旧的“启动时询问是否恢复上次的窗口”选项会被隐藏。
 
-- **Auto update**: Automatically check for updates on startup to ensure you're always using the latest version
-- **I have theme issues**: Use an alternative window hiding method that preserves your custom File Explorer theme. Enable this if you experience theme-related issues
-- **Save closed history**: Save recently closed windows for reopening later (ReopenClosed, Tab Search)
-- **Restore previous windows**: Restore previously opened windows after restart or crash
-- **Hide tray icon**: Hide the system tray icon for a cleaner taskbar experience.
-  * You must first configure a hotkey with the `ToggleVisibility` action before enabling this option
+## ⌨️ 快捷键设置
 
-![Preferences](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/Preferences.png)
-</details>
+双击托盘图标 → **快捷键** 页面。每一行是一个快捷键配置：
 
-<details>
-<summary>⌨️ Hotkey Profile Management</summary>
+- **快捷键**：单击这个框，然后按下组合键即可录制；按退格键清除。
+- **范围**：**全局**（任何地方都响应）或 **文件资源管理器**（只在资源管理器在前台时响应）。
+- **动作**：打开、复制标签页、重新打开已关闭、标签页搜索、后退、前进、向上一级、合并所有窗口、恢复上次的标签页等。
+- 展开后还有：**位置**（“打开”动作要打开的路径）、**延迟**、**拦截**（不再把按键传给其他程序）、**标签页**（以标签页而不是新窗口打开）。
+- 修改后点击 **保存**（或勾选“自动保存”，关闭窗口时自动保存）。
 
-### Profile Options
-- Create new profiles
-- Import profiles from file
-- Export profiles to file
-- Enable/disable individual profiles
+### 🖱️ 鼠标快捷键怎么用
 
-### Profile Settings
-Each profile contains the following settings:
+托盘菜单里的 **鼠标快捷键** 在还没有任何鼠标快捷键时，点击它会直接打开 **快捷键** 页面并显示说明。
 
-1. **Basic Configuration**
-   - Hotkey: Set keyboard shortcut (supports modifier keys)
-   - Scope: Global (system-wide) or Explorer (only in File Explorer)
-   - Action Type:
-     - `Open`: Open a specific location
-     - `Duplicate`: Duplicate the current tab
-     - `ReopenClosed`: Reopen the last closed location
-     - `TabSearch`: Open the tab search/switcher popup
-     - `NavigateBack`: Navigate back in the current tab
-     - `NavigateForward`: Navigate forward in the current tab
-     - `NavigateUp`: Navigate up one directory level
-     - `SetTargetWindow`: Mark the current window as the target for new tabs
-     - `ToggleWinHook`: Toggle the window hook on/off
-     - `ToggleReuseTabs`: Toggle tab reuse on/off
-     - `ToggleVisibility`: Show/hide the main window
-     - `DetachTab`: Detach the current tab to a new window
-     - `Snap`: Snap the current window to the screen edges (right/left/top/bottom)
-   - Path Field (for `Open` action)
-     - Optional: Leave empty to open new tab
-     - Supports multiple path formats (see Custom Path Navigation section)
+**最快的方法**：在 **快捷键** 页面点击 **添加示例**。它会添加 **“双击空白处 → 返回上一级”** 并自动开启鼠标快捷键。之后在资源管理器里双击文件夹的**空白处**，就会回到上一级文件夹。
 
-2. **Advanced Settings**
-   - Execution Delay: Slider to set delay before action execution
-   - Key Handling: Toggle whether hotkeys are passed to other applications
-   - Profile Deletion: Remove unwanted profiles
-
-![Form](https://cdn.jsdelivr.net/gh/w4po/ExplorerTabUtility@master/Assets/Form.png)
-
-> [!TIP]
-> Use the "Handled" toggle to prevent or allow hotkey propagation to other applications that might be listening for the same key combination.
+**自己录制**：
+1. 点击 **新建**。
+2. 单击新行里的 **快捷键** 框，然后把鼠标**留在框内**，单击想用的鼠标键（中键、侧键 X1/X2 等）；**快速双击**则录制为双击（例如“Left_DBL”表示左键双击）。也可以按住 Ctrl / Alt / Shift 再单击。
+3. 为了避免每次点击都触发，**不能单独使用左键单击**，可以用左键双击，或者组合键。
+4. **范围** 选 **文件资源管理器**，**动作** 选 **向上一级**（或 **后退** / **前进**），然后点击 **保存**。
+5. 确认托盘菜单里的 **鼠标快捷键** 已勾选。
 
 > [!NOTE]
-> The `SetTargetWindow` action lets you choose which Explorer window will receive new tabs. This is useful when you have multiple Explorer windows open or working on different virtual desktops and want to control where new tabs appear.
-</details>
+> - **后退 / 前进 / 向上一级** 只在点到文件夹**空白处**时才执行；其他动作在资源管理器窗口里的任意位置都会触发。
+> - 资源管理器本身已经支持鼠标侧键后退/前进，所以没有预设侧键配置。
+> - 已知限制：在缩放比例与主显示器不同的副显示器上，“空白处”判断可能失效。
 
-## 🔧 Technical Details
+## ⚙️ 首选项一览
 
-<details>
-<summary>Implementation Overview</summary>
+| 选项 | 说明 |
+| --- | --- |
+| 自动更新 | 启动时从本仓库检查新版本 |
+| 我遇到了主题问题 | 用另一种方式隐藏窗口，以保留自定义的资源管理器主题 |
+| 保存关闭历史 | 保存已关闭窗口的历史，供“重新打开已关闭”和“标签页搜索”使用 |
+| 自动合并多余窗口 | 见上文 |
+| 自动恢复上次的标签页 | 见上文 |
+| 启动时询问是否恢复上次的窗口 | 原版的恢复方式，只有在关闭“自动恢复上次的标签页”时才显示 |
+| 隐藏托盘图标 | 需要先设置“显示/隐藏本程序”的快捷键 |
+| 开机自动启动 | 登录 Windows 时自动在托盘中启动 |
+| 界面语言 | 跟随系统 / 简体中文 / English，重启程序后生效 |
 
-### Core Components
+设置保存在 `%APPDATA%\ExplorerTabUtility\settings.json`，上次的标签页保存在同一文件夹的 `session.json`。删除 `settings.json` 即可恢复默认设置。
 
-#### 1. 🔌 COM Integration
-- Direct interaction with Windows Shell through native COM interfaces:
-  - `Shell32`: Core shell functionality and file system operations
-  - `SHDocVw`: Explorer window and tab management
-  - Custom COM interface implementations for reliable shell interactions
-- Efficient PIDL (Pointer to ID List) handling for file system operations
-- Thread-safe COM object lifecycle management
+## 🗑️ 卸载
 
-#### 2. 🪟 Window Management
-- Advanced window tracking and state management:
-  - Concurrent collections for thread-safe window tracking
-  - Efficient tab handle caching and validation
-  - Smart window-to-tab conversion logic
-- Support for special folder navigation (CLSID paths)
+- **安装版**：设置 → 应用 → 已安装的应用 → “ExplorerTabUtility” → 卸载。
+- **免安装版**：先在首选项里取消“开机自动启动”，退出程序后删除文件夹即可。
 
-#### 3. ⚡ Process & Event System
-- Robust Explorer process monitoring:
-  - Automatic recovery from Explorer crashes
-  - Event-driven architecture for responsive UI
-  - Efficient window event hooking
-- Asynchronous operation handling:
-  - STA (Single-threaded Apartment) task scheduler
-  - Non-blocking COM operations
-  - Proper synchronization with SemaphoreSlim
+## ℹ️ 说明
 
-#### 4. 🚀 Performance Optimizations
-- Smart caching mechanisms:
-  - Window handle caching
-  - Path comparison optimization
-  - Tab state tracking
-- Efficient resource management:
-  - Proper COM object disposal
-  - Memory-efficient collections
-  - Minimal window recreation
+资源管理器的标签页没有提供正式的编程接口，本程序通过 COM 和窗口消息来实现，部分操作（尤其是一次打开很多标签页时）可能会有短暂延迟，这是资源管理器本身的限制。
 
-#### 5. 🎨 Modern UI
-- Modern WPF-based user interface:
-  - XAML-based UI components for better flexibility and design
-  - Custom themes and styles in dedicated XAML files
-  - Improved visual consistency with Windows 11 design language
-- Enhanced system tray integration:
-  - Modern WPF-based TaskbarIcon implementation
-  - XAML-based context menu with Windows 11 iconography
-  - Custom icons and hover effects for better visual feedback
-- Tab Search popup with modern styling and keyboard navigation
-- About page with developer information and support options
+## 🛠️ 开发
 
-### Key Technologies
-- .NET 9 and .NET Framework 4.8.1
-- Windows COM APIs
-  - Shell32 and SHDocVw interfaces
-  - Native P/Invoke
-- Advanced threading with STA scheduler
-- Concurrent collections for thread safety
-- WPF (Windows Presentation Foundation) for modern UI
-</details>
+- WPF 项目，目标框架 `net9.0-windows` 和 `net481`。项目引用了 COM 组件（Shell32 / SHDocVw），需要在 Windows 上用完整的 MSBuild（Visual Studio）编译；GitHub Actions 会为每个 PR 编译测试版本。
+- 界面文字在 `ExplorerTabUtility/Localization/Strings.en-US.xaml`（英文，基准）和 `Strings.zh-CN.xaml`（中文）中**直接编辑**，两边的键必须一致（UTF-8 带 BOM）。提交前可运行 `python tools/check_strings.py` 检查，CI 也会检查。
+- 发布：推送 `v版本号-zh` 标签后，`build-release.yml` 会编译 6 个 zip 和安装程序，并创建发布草稿。
 
-## 🗑️ Uninstallation
+## 🙏 致谢与许可
 
-The utility can be uninstalled in several ways depending on how you installed it:
-
-- **If you installed using the installer**: Use the standard Windows uninstaller
-  - Go to "Settings > Apps > Installed apps"
-  - Find "Explorer Tab Utility" and click "Uninstall"
-  - Or use Control Panel > Programs and Features
-  - Or run the uninstaller directly from the installation directory
-
-- **If you installed via winget**:
-  ```powershell
-  winget uninstall w4po.ExplorerTabUtility
-  ```
-
-- **If you installed via Chocolatey**:
-  ```powershell
-  choco uninstall explorertabutility
-  ```
-
-- **If you used the portable version**: Simply delete the application folder
-  - If you enabled the `Add to startup` option, make sure to disable it first before deletion
-
-## Antivirus Detection
-
-> [!WARNING]
-> The utility might be flagged by antivirus software as suspicious. This is a **false positive** caused by our use of:
-> - COM interactions (for File Explorer tab management)
-> - Low-level keyboard & mouse hooks (for hotkey support)
->
-> The tool is completely open source, and you can:
-> - Review the source code in this repository
-> - Build it yourself using Visual Studio
-> - Verify its safety and functionality
-
-### Adding to Windows Defender Exclusions
-
-If Windows Defender is blocking the utility, you can add it to the exclusions list:
-
-1. Open Windows Security
-2. Go to `Virus & threat protection`
-3. Click `Manage settings` under `Virus & threat protection settings`
-4. Scroll down to `Exclusions` and click `Add or remove exclusions`
-5. Click `Add an exclusion` and select `Folder`
-6. Browse to the Explorer Tab Utility folder location
-
-Alternatively, you can use PowerShell (Run as Administrator):
-```powershell
-Add-MpPreference -ExclusionPath "PATH_TO_UTILITY_FOLDER"
-```
-
-## ℹ️ Notes
-
-> [!NOTE]
-> While this utility is optimized for best performance, some operations might experience delays due to limitations in Windows File Explorer itself:
-> - The File Explorer's tab interface lacks proper APIs for programmatic control
-> - Some operations in File Explorer are inherently laggy, especially with multiple simultaneous window operations
-> - Windows Shell doesn't expose all the necessary functionality for seamless tab management
-
-Despite these Windows limitations, the utility implements the best possible solutions using available Windows APIs and COM interfaces.
-
-## 💝 Support the Project
-
-If you find Explorer Tab Utility helpful, consider supporting its development:
-
-<p align="center">
-  <a href="https://github.com/sponsors/w4po">
-    <img src="https://img.shields.io/badge/sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=#white" alt="GitHub Sponsors"/>
-  </a>
-  <a href="https://www.patreon.com/w4po">
-    <img src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon"/>
-  </a>
-  <a href="https://www.buymeacoffee.com/w4po">
-    <img src="https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"/>
-  </a>
-  <a href="https://paypal.me/w4po77">
-    <img src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal"/>
-  </a>
-</p>
-
-Your support helps maintain and improve the project! ❤️
-
-### Sponsors & Supporters
-
-Thank you to all the amazing people who support this project!
-
-<p align="center">
-  <a href="https://github.com/sponsors/w4po">
-    <img src="https://cdn.jsdelivr.net/gh/w4po/sponsors/sponsors.svg" alt="Sponsors" />
-  </a>
-</p>
-
-## Contributing
-
-Contributions are welcome! Feel free to submit issues and pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-
-This project makes use of the following excellent open-source packages:
-
-<p align="center">
-  <a href="https://github.com/HavenDV/H.Hooks">
-    <img src="https://img.shields.io/badge/H.Hooks-Keyboard%20Hook-purple?style=for-the-badge" alt="H.Hooks"/>
-  </a>
-  <a href="https://github.com/hardcodet/wpf-notifyicon">
-    <img src="https://img.shields.io/badge/Hardcodet.NotifyIcon.Wpf-System%20Tray-blue?style=for-the-badge" alt="Hardcodet NotifyIcon"/>
-  </a>
-</p>
-
-- **[H.Hooks](https://github.com/HavenDV/H.Hooks)** - Efficient and reliable keyboard hook implementation
-- **[Hardcodet.NotifyIcon.Wpf](https://github.com/hardcodet/wpf-notifyicon)** - Modern WPF-based system tray icon implementation
-
-Special thanks to the maintainers of these packages for their excellent work!
-
-## Code Signing
-<table>
- <tbody>
-  <tr>
-   <td align="center"><img alt="[SignPath]" src="https://avatars.githubusercontent.com/u/34448643" height="30"/></td>
-   <td>Free code signing provided by <a href="https://signpath.io?utm_source=foundation&utm_medium=github&utm_campaign=ExplorerTabUtility">SignPath.io</a>, certificate by <a href="https://signpath.org?utm_source=foundation&utm_medium=github&utm_campaign=ExplorerTabUtility">SignPath Foundation</a></td>
-  </tr>
- </tbody>
-</table>
+- 原作者：**[w4po](https://github.com/w4po)**，原项目 [w4po/ExplorerTabUtility](https://github.com/w4po/ExplorerTabUtility)。如果觉得好用，欢迎[支持原作者](https://github.com/sponsors/w4po)。
+- 本项目使用 [MIT 许可证](LICENSE)，与原项目相同。
+- 使用的开源组件：[H.Hooks](https://github.com/HavenDV/H.Hooks)（键盘/鼠标钩子）、[Hardcodet.NotifyIcon.Wpf](https://github.com/hardcodet/wpf-notifyicon)（托盘图标）、[AutoUpdater.NET](https://github.com/ravibpatel/AutoUpdater.NET)（自动更新）。
+- 中文版新增或修改的功能如果有问题，请不要提交到原项目的 Issues（原作者不维护这些改动）。
