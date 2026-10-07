@@ -6,6 +6,7 @@ internal static class Constants
     internal const string MutexId = $"__{AppName}Hook__Mutex";
     internal const string SettingsFileName = "settings.json";
     internal const string HotKeyProfilesFileName = "HotKeyProfiles.json";
+    internal const string SessionFileName = "session.json";
     // This (Simplified Chinese) build is maintained in the jinlong85 fork, so updates and project links point there.
     // The original project and its author (w4po) are credited in the About page.
     internal const string ProjectUrl = "https://github.com/jinlong85/ExplorerTabUtility";

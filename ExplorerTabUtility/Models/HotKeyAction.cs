@@ -40,5 +40,7 @@ public enum HotKeyAction
     [Description("Snap the current window to the bottom.")]
     SnapDown,
     [Description("Merge all File Explorer windows into one window.")]
-    MergeWindows
+    MergeWindows,
+    [Description("Reopen the tabs of the last session in one window.")]
+    RestoreSession
 }

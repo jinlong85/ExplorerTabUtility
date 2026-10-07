@@ -23,6 +23,8 @@ public sealed class HookManager
     public event Action? OnShellInitialized;
     /// <summary>Raised on the UI thread after a merge that was requested by the user (tray menu / shortcut).</summary>
     public event Action<MergeResult>? OnWindowsMerged;
+    /// <summary>Raised on the UI thread after the last session was restored (automatically or from the tray menu / shortcut).</summary>
+    public event Action<RestoreResult>? OnSessionRestored;
 
     public HookManager(ProfileManager profileManager)
     {
@@ -37,6 +39,7 @@ public sealed class HookManager
         _keyboardHook.OnHotKeyProfileTriggered += OnHotKeyProfileTriggered;
         _mouseHook.OnHotKeyProfileTriggered += OnHotKeyProfileTriggered;
         _windowHook.OnShellInitialized += () => OnShellInitialized?.Invoke();
+        _windowHook.SessionRestored += result => _syncContext.Post(_ => OnSessionRestored?.Invoke(result), null);
         System.Windows.Application.Current.SessionEnding += (_, _) => Dispose();
     }
 
@@ -48,6 +51,14 @@ public sealed class HookManager
     public void StopWindowHook() => ChangeHookStatus(_windowHook, false);
     public void SetReuseTabs(bool value) => _windowHook.SetReuseTabs(value);
     public void SetAutoMergeWindows(bool value) => _windowHook.SetAutoMergeWindows(value);
+    public void SetAutoRestoreSession(bool value) => _windowHook.SetAutoRestoreSession(value);
+
+    /// <summary>Reopens the tabs of the last session in one window (OnSessionRestored reports the result).</summary>
+    public Task<RestoreResult> RestoreSessionNowAsync()
+    {
+        // Explorer's COM objects live in the multithreaded apartment: run off the UI / hook thread.
+        return Task.Run(() => _windowHook.RestoreLastSessionAsync());
+    }
 
     /// <summary>Merges all File Explorer windows into one (the foreground Explorer window, else the most recently used one).</summary>
     public async Task<MergeResult> MergeWindowsNowAsync(nint preferredTarget = 0)
@@ -121,6 +132,12 @@ public sealed class HookManager
                 if (e.Profile.Delay > 0)
                     await Task.Delay(e.Profile.Delay);
                 await MergeWindowsNowAsync(e.ForegroundWindow);
+                break;
+
+            case HotKeyAction.RestoreSession:
+                if (e.Profile.Delay > 0)
+                    await Task.Delay(e.Profile.Delay);
+                await RestoreSessionNowAsync();
                 break;
 
             default:

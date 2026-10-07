@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Collections.Generic;
+using ExplorerTabUtility.Hooks;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Managers;
@@ -37,6 +38,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         _hookManager.OnWindowHookToggled += HookManager_OnWindowHookToggled;
         _hookManager.OnReuseTabsToggled += HookManager_OnReuseTabsToggled;
         _hookManager.OnWindowsMerged += HookManager_OnWindowsMerged;
+        _hookManager.OnSessionRestored += HookManager_OnSessionRestored;
 
         // Populate submenus for keyboard & mouse profiles
         UpdateMenuItems(autoCheckParent: false);
@@ -61,6 +63,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         ReuseTabs.Command = new RelayCommand(_ => ToggleReuseTabs());
         AddToStartup.Command = new RelayCommand(_ => ToggleStartup());
         MergeWindowsNow.Command = new RelayCommand(_ => _ = _hookManager.MergeWindowsNowAsync());
+        RestoreSession.Command = new RelayCommand(_ => _ = _hookManager.RestoreSessionNowAsync());
         OpenSettings.Command = new RelayCommand(_ => _showWindowAction());
         CheckForUpdates.Command = new RelayCommand(_ => UpdateManager.CheckForUpdates());
         ExitApplication.Command = new RelayCommand(_ => Application.Current.Shutdown());
@@ -124,6 +127,30 @@ public partial class SystemTrayIcon : UserControl, IDisposable
             ? Loc.Format("Merge_Done", result.MergedWindows, result.MovedTabs)
             : Loc.Get("Merge_Nothing");
         TrayIcon.ShowBalloonTip(Loc.Get("App_Title"), message, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+    }
+
+    private void HookManager_OnSessionRestored(RestoreResult result)
+    {
+        if (TrayIcon.Visibility != Visibility.Visible) return;
+
+        var parts = new List<string>();
+        if (result.NoSession)
+            parts.Add(Loc.Get("Restore_Nothing"));
+        else if (result.OpenedTabs > 0)
+            parts.Add(Loc.Format("Restore_Done", result.OpenedTabs));
+        else if (result.AlreadyOpen > 0 && result.Missing.Count == 0 && result.Failed == 0)
+            parts.Add(Loc.Get("Restore_AllOpen"));
+        else if (result.Missing.Count == 0 && result.Failed == 0)
+            parts.Add(Loc.Get("Restore_Nothing"));
+
+        if (result.Missing.Count > 0)
+            parts.Add(Loc.Format("Restore_Missing", result.Missing.Count, string.Join(", ", result.Missing.Take(3))));
+        if (result.OverLimit > 0)
+            parts.Add(Loc.Format("Restore_OverLimit", result.OverLimit, ExplorerWatcher.MaxRestoreTabs));
+        if (result.Failed > 0)
+            parts.Add(Loc.Format("Restore_Failed", result.Failed));
+
+        TrayIcon.ShowBalloonTip(Loc.Get("App_Title"), string.Join(Environment.NewLine, parts), Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }
 
     private void HookManager_OnReuseTabsToggled()

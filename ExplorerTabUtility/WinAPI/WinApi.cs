@@ -95,6 +95,10 @@ public static class WinApi
     
     public const uint WM_CLOSE = 0x0010;
     public const int DWMWA_CLOAKED = 14;
+    public const int SM_SHUTTINGDOWN = 0x2000;
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(nint hWnd);

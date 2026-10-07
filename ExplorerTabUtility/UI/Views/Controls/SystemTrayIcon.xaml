@@ -91,6 +91,15 @@
                     </MenuItem.Icon>
                 </MenuItem>
 
+                <!-- Restore the last session's tabs -->
+                <MenuItem x:Name="RestoreSession"
+                          Header="{DynamicResource Tray_RestoreSession}"
+                          ToolTip="{DynamicResource Tray_RestoreSessionToolTip}">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#xE777;" FontSize="14" />
+                    </MenuItem.Icon>
+                </MenuItem>
+
                 <Separator />
 
                 <!-- Add to startup -->

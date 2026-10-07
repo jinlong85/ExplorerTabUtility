@@ -191,6 +191,17 @@ public static class SettingsManager
         }
     }
 
+    /// <summary>Reopen the last session's tabs automatically after a reboot / logoff or an Explorer crash (never after the user closed them).</summary>
+    public static bool AutoRestoreSession
+    {
+        get => Settings.AutoRestoreSession;
+        set
+        {
+            Settings.AutoRestoreSession = value;
+            SaveSettings();
+        }
+    }
+
     public static WindowRecord[]? ClosedWindows
     {
         get => Settings.ClosedWindows;
@@ -245,6 +256,7 @@ internal class AppSettings
     public bool SaveClosedWindows { get; set; }
     public bool RestorePreviousWindows { get; set; }
     public bool AutoMergeWindows { get; set; } = true;
+    public bool AutoRestoreSession { get; set; } = true;
     public WindowRecord[]? ClosedWindows { get; set; }
     public string? Language { get; set; } = string.Empty;
 }
