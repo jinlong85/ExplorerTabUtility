@@ -228,6 +228,9 @@
                                             <CheckBox x:Name="CbAutoMergeWindows" Content="{DynamicResource Pref_AutoMergeWindows}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_AutoMergeWindowsToolTip}" />
+                                            <CheckBox x:Name="CbAutoRestoreSession" Content="{DynamicResource Pref_AutoRestoreSession}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource Pref_AutoRestoreSessionToolTip}" />
                                             <CheckBox x:Name="CbHideTrayIcon" Content="{DynamicResource Pref_HideTrayIcon}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_HideTrayIconToolTip}" />

@@ -21,7 +21,7 @@ namespace ExplorerTabUtility.Hooks;
 
 using WindowEntry = DualKeyEntry<InternetExplorer, nint?, WindowInfo>;
 
-public class ExplorerWatcher : IHook
+public partial class ExplorerWatcher : IHook
 {
     private static bool _instanceRunning;
     private static Guid _shellBrowserGuid = typeof(IShellBrowser).GUID;
@@ -67,6 +67,7 @@ public class ExplorerWatcher : IHook
 
         _processWatcher = new ProcessWatcher("explorer");
         _processWatcher.ProcessTerminated += OnExplorerProcessTerminated;
+        InitializeSession();
         StartExplorerProcessCheck();
     }
 
@@ -516,7 +517,7 @@ public class ExplorerWatcher : IHook
             PruneClosedWindows();
 
             // Don't interfere with the window hook (a hidden window is being converted into a tab) or another tab operation.
-            if (_isMerging || _toOpenWindowsLock.CurrentCount == 0 || Helper.HiddenWindows.Keys.Any(Helper.IsFileExplorerWindow))
+            if (_isMerging || _isRestoring || _toOpenWindowsLock.CurrentCount == 0 || Helper.HiddenWindows.Keys.Any(Helper.IsFileExplorerWindow))
             {
                 _autoMergeSignature = null;
                 return;
@@ -876,7 +877,8 @@ public class ExplorerWatcher : IHook
                 {
                     _mainWindowHandle = new IntPtr(window.HWND);
 
-                    if (SettingsManager.RestorePreviousWindows && _closedWindows.Any(w => w.Restore))
+                    // "Restore last session's tabs" replaces the old prompt while it is enabled.
+                    if (SettingsManager.RestorePreviousWindows && !_autoRestoreEnabled && !_isRestoring && _closedWindows.Any(w => w.Restore))
                         _ = RestorePreviousWindows();
                 }
                 
@@ -1474,7 +1476,7 @@ public class ExplorerWatcher : IHook
             if (!_isForcingTabs && !_reuseTabs) return;
 
             // Tabs created by a merge load their folders in the background: that is not "Explorer showed an item".
-            if (_isMerging || !Helper.IsTimeUp(_lastMergeFinishedAt, 2_000)) return;
+            if (_isMerging || _isRestoring || !Helper.IsTimeUp(_lastMergeFinishedAt, 2_000)) return;
 
             // Ignore our own selection changes and the initial selection of a new tab / a folder that was just navigated to.
             if (!Helper.IsTimeUp(_lastOwnSelectionTicks, 700) ||
@@ -1748,6 +1750,7 @@ public class ExplorerWatcher : IHook
             _mainExplorerProcessId = process.Id;
             InitializeShellObjects();
             OnShellInitialized?.Invoke();
+            OnShellReadyForSession();
         }
     }
     private void OnExplorerProcessTerminated(object? s, ProcessEventArgs e)
@@ -1757,6 +1760,7 @@ public class ExplorerWatcher : IHook
         {
             if (e.ProcessId == _mainExplorerProcessId)
             {
+                OnExplorerTerminatedForSession();
                 _mainExplorerProcessId = 0;
                 DisposeShellObjects();
                 StartExplorerProcessCheck();
@@ -1904,6 +1908,7 @@ public class ExplorerWatcher : IHook
     public void Dispose()
     {
         SetAutoMergeWindows(false);
+        ShutdownSession();
         DisposeShellObjects();
         _instanceRunning = false;
         _processWatcher.Dispose();

@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         CbSaveClosedHistory.IsChecked = SettingsManager.SaveClosedHistory;
         CbRestorePreviousWindows.IsChecked = SettingsManager.RestorePreviousWindows;
         CbAutoMergeWindows.IsChecked = SettingsManager.AutoMergeWindows;
+        CbAutoRestoreSession.IsChecked = SettingsManager.AutoRestoreSession;
         InitializeLanguageComboBox();
         UpdateTrayIconVisibility(false);
 
@@ -79,6 +80,8 @@ public partial class MainWindow : Window
         CbRestorePreviousWindows.Unchecked += CbRestorePreviousWindows_CheckedChanged;
         CbAutoMergeWindows.Checked += CbAutoMergeWindows_CheckedChanged;
         CbAutoMergeWindows.Unchecked += CbAutoMergeWindows_CheckedChanged;
+        CbAutoRestoreSession.Checked += CbAutoRestoreSession_CheckedChanged;
+        CbAutoRestoreSession.Unchecked += CbAutoRestoreSession_CheckedChanged;
         CbAutoUpdate.Checked += CbAutoUpdate_CheckedChanged;
         CbAutoUpdate.Unchecked += CbAutoUpdate_CheckedChanged;
         CbThemeIssue.Checked += CbThemeIssue_CheckedChanged;
@@ -110,6 +113,7 @@ public partial class MainWindow : Window
         if (SettingsManager.IsKeyboardHookActive) _hookManager.StartKeyboardHook();
         _hookManager.SetReuseTabs(SettingsManager.ReuseTabs);
         _hookManager.SetAutoMergeWindows(SettingsManager.AutoMergeWindows);
+        _hookManager.SetAutoRestoreSession(SettingsManager.AutoRestoreSession);
     }
 
     private void ToggleWindowVisibility()
@@ -205,6 +209,12 @@ public partial class MainWindow : Window
     {
         SettingsManager.AutoMergeWindows = CbAutoMergeWindows.IsChecked ?? false;
         _hookManager.SetAutoMergeWindows(SettingsManager.AutoMergeWindows);
+    }
+
+    private void CbAutoRestoreSession_CheckedChanged(object? _, RoutedEventArgs __)
+    {
+        SettingsManager.AutoRestoreSession = CbAutoRestoreSession.IsChecked ?? false;
+        _hookManager.SetAutoRestoreSession(SettingsManager.AutoRestoreSession);
     }
 
     private void CbHideTrayIcon_CheckedChanged(object? _, RoutedEventArgs __) => UpdateTrayIconVisibility(true);
