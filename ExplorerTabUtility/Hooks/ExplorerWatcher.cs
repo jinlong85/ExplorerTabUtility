@@ -44,6 +44,13 @@ public class ExplorerWatcher : IHook
     private DShellWindowsEvents_WindowRegisteredEventHandler? _windowRegisteredHandler;
 
     private string _defaultLocation = null!;
+
+    // Folders that were just converted from a new window into a tab (location, Environment.TickCount).
+    // Used to make sure one "open folder" request from another app only ends up as ONE tab.
+    private const int DuplicateRequestWindowMs = 2_000;
+    private const int RecentTabMaxAgeMs = 3_000;
+    private readonly List<(string Location, int Tick)> _recentConversions = new();
+    private readonly object _recentConversionsLock = new();
     private bool _reuseTabs = true;
     private bool _isForcingTabs;
     public bool IsHookActive => _isForcingTabs;
@@ -421,11 +428,38 @@ public class ExplorerWatcher : IHook
             if (shouldReopenAsTab)
             {
                 showAgain = false;
+                var windowRecord = new WindowRecord(location, hWnd, GetSelectedItems(window));
 
-                _ = OpenTabNavigateWithSelection(new WindowRecord(location, hWnd, GetSelectedItems(window)), _mainWindowHandle);
+                // Duplicate protection (opening a folder from another app could end up as two identical tabs):
+                // 1) The same folder was already converted moments ago (duplicate request / duplicate registration).
+                // 2) The folder was already opened as a new tab moments ago (e.g. by Explorer itself, Windows 11
+                //    "Open desktop folders and external folder links in new tab").
+                // In both cases just close this window and switch to the tab that already exists.
+                var isRepeatedRequest = !TryRegisterConversion(location);
+                var existingTab = FindRecentTabWithLocation(location, exclude: window);
+                if (isRepeatedRequest || existingTab != 0)
+                {
+                    window.Quit();
+                    RemoveWindowAndUnhookEvents(window, windowInfo);
+                    if (existingTab != 0)
+                        await ActivateTabAsync(existingTab, windowRecord.SelectedItems);
+                    return;
+                }
 
-                window.Quit();
+                // Close the new window FIRST and only open the replacement tab once it is really gone.
+                // If the window's tab survived because Explorer already moved it into an existing window
+                // (Windows 11 can do that by itself), keep that tab instead of opening a second identical one.
+                var hostWindow = await CloseWindowAsync(window, hWnd);
+                if (hostWindow != 0)
+                {
+                    showAgain = true; // Restore the (now empty) original window if it still exists.
+                    HookWindowEvents(window, windowInfo);
+                    SelectItems(window, windowRecord.SelectedItems);
+                    return;
+                }
+
                 RemoveWindowAndUnhookEvents(window, windowInfo);
+                _ = OpenTabNavigateWithSelection(windowRecord, _mainWindowHandle, closeIfDuplicated: true);
                 return;
             }
 
@@ -588,8 +622,12 @@ public class ExplorerWatcher : IHook
                 _toOpenWindowsLock.Release();
         }
     }
-    private async Task OpenTabNavigateWithSelection(WindowRecord windowToOpen, nint windowHandle = 0, bool isDuplicate = false, bool forceTabReuse = false)
+    private async Task OpenTabNavigateWithSelection(WindowRecord windowToOpen, nint windowHandle = 0, bool isDuplicate = false, bool forceTabReuse = false,
+        bool closeIfDuplicated = false)
     {
+        InternetExplorer? createdWindow = null;
+        nint createdTabHandle = 0, createdInWindow = 0;
+
         await _toOpenWindowsLock.WaitAsync();
         try
         {
@@ -654,10 +692,163 @@ public class ExplorerWatcher : IHook
 
             var timeoutTask = Task.Delay(5000);
             await Task.WhenAny(tcs.Task, timeoutTask);
+
+            createdWindow = window;
+            createdTabHandle = newTabHandle;
+            createdInWindow = mainWindowHWnd;
         }
         finally
         {
             _toOpenWindowsLock.Release();
+        }
+
+        // A converted window's folder may also show up as a separate new tab created by Explorer itself
+        // a moment later. If that happens, close OUR tab (never one we didn't create) and keep Explorer's.
+        if (closeIfDuplicated && createdWindow != null)
+            await CloseOwnTabIfDuplicatedAsync(windowToOpen, createdWindow, createdTabHandle, createdInWindow);
+    }
+
+    /// <summary>
+    /// Remembers that <paramref name="location"/> is being converted from a new window into a tab.
+    /// Returns false if the same location was already converted within the last <see cref="DuplicateRequestWindowMs"/>.
+    /// </summary>
+    private bool TryRegisterConversion(string location)
+    {
+        lock (_recentConversionsLock)
+        {
+            var now = Environment.TickCount;
+            _recentConversions.RemoveAll(c => now - c.Tick > DuplicateRequestWindowMs);
+
+            if (_recentConversions.Any(c => IsSameLocation(c.Location, location)))
+                return false;
+
+            _recentConversions.Add((location, now));
+            return true;
+        }
+    }
+
+    private bool IsSameLocation(string location1, string location2)
+    {
+        if (string.Equals(location1, location2, StringComparison.OrdinalIgnoreCase)) return true;
+        try
+        {
+            return _shellPathComparer.IsEquivalent(location1, location2);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Finds a tab (other than <paramref name="exclude"/>) that was opened within the last <see cref="RecentTabMaxAgeMs"/>
+    /// and shows <paramref name="location"/>. Returns its tab handle, or 0.
+    /// </summary>
+    private nint FindRecentTabWithLocation(string location, InternetExplorer? exclude)
+    {
+        if (string.IsNullOrWhiteSpace(location) || location == _defaultLocation) return 0;
+
+        List<(InternetExplorer Window, WindowInfo Info, nint? TabHandle)> candidates;
+        lock (_windowEntryDictLock)
+        {
+            candidates = ((IEnumerable<WindowEntry>)_windowEntryDict)
+                .Where(e => !ReferenceEquals(e.PrimaryKey, exclude) && !Helper.IsTimeUp(e.Value.CreatedAt, RecentTabMaxAgeMs))
+                .Select(e => (e.PrimaryKey, e.Value, e.OptionalKey))
+                .ToList();
+        }
+
+        foreach (var (window, info, tabHandle) in candidates)
+        {
+            if (tabHandle is not { } tab || tab == 0) continue;
+            try
+            {
+                if (IsSameLocation(location, info.Location ?? GetLocation(window)))
+                    return tab;
+            }
+            catch
+            {
+                // The tab might have been closed meanwhile.
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Closes the window of <paramref name="window"/> and waits until it is gone.
+    /// Returns 0 when it closed, or the handle of the Explorer window that now hosts it
+    /// (Explorer moved the tab into another window before it could be closed).
+    /// </summary>
+    private static async Task<nint> CloseWindowAsync(InternetExplorer window, nint originalHWnd, int timeoutMs = 1_000)
+    {
+        try
+        {
+            var host = new IntPtr(window.HWND);
+            if (host != originalHWnd && Helper.IsFileExplorerWindow(host))
+                return host; // Already moved, don't close it.
+
+            window.Quit();
+        }
+        catch
+        {
+            return 0; // Already gone.
+        }
+
+        var startTicks = Stopwatch.GetTimestamp();
+        while (!Helper.IsTimeUp(startTicks, timeoutMs))
+        {
+            await Task.Delay(30);
+            try
+            {
+                var host = new IntPtr(window.HWND);
+                if (host != originalHWnd && Helper.IsFileExplorerWindow(host))
+                    return host;
+            }
+            catch
+            {
+                return 0; // COM object disconnected => the window was closed.
+            }
+        }
+
+        return 0; // Still there after the timeout: keep the previous behavior (treat it as closed).
+    }
+
+    private async Task ActivateTabAsync(nint tabHandle, string[]? selectedItems)
+    {
+        var hostWindow = WinApi.GetParent(tabHandle);
+        if (!Helper.IsFileExplorerWindow(hostWindow)) return;
+
+        await SelectTabByHandle(hostWindow, tabHandle);
+        WinApi.RestoreWindowToForeground(hostWindow);
+
+        var window = GetWindowByTabHandle(tabHandle);
+        if (window != null)
+        {
+            try { SelectItems(window, selectedItems); }
+            catch { /* ignored */ }
+        }
+    }
+
+    private async Task CloseOwnTabIfDuplicatedAsync(WindowRecord windowToOpen, InternetExplorer ownWindow, nint ownTabHandle, nint hostWindow)
+    {
+        // Give Explorer a short moment to register its own tab (if it creates one at all).
+        var startTicks = Stopwatch.GetTimestamp();
+        while (!Helper.IsTimeUp(startTicks, 1_500))
+        {
+            var otherTab = FindRecentTabWithLocation(windowToOpen.Location, exclude: ownWindow);
+            if (otherTab != 0 && otherTab != ownTabHandle)
+            {
+                // Only close our tab if it is still the active one, so we never close something the user switched to.
+                if (GetActiveTabHandle(hostWindow) == ownTabHandle)
+                {
+                    // Send 0xA021 magic command (CTRL + W)
+                    WinApi.SendMessage(ownTabHandle, WinApi.WM_COMMAND, 0xA021, 1);
+                    await ActivateTabAsync(otherTab, windowToOpen.SelectedItems);
+                }
+                return;
+            }
+
+            await Task.Delay(100);
         }
     }
     private bool TryGetRecentlyClosedWindow(string location, out WindowRecord? closedWindow, int maxAge = 2_000)
