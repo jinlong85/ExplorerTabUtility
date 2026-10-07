@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Microsoft.Win32;
 using ExplorerTabUtility.Helpers;
 
@@ -12,12 +13,53 @@ public static class RegistryManager
     private static readonly string? ExecutablePath = Helper.GetExecutablePath();
     public static bool IsStartupEnabled => IsInStartup() && IsStartupApprovedEnabled();
 
-    public static void ToggleStartup()
+    /// <summary>Raised after the startup setting was changed by this app (argument: the new effective state).</summary>
+    public static event Action<bool>? StartupChanged;
+
+    public static void ToggleStartup() => SetStartup(!IsStartupEnabled);
+
+    public static void SetStartup(bool enable)
     {
-        if (IsStartupEnabled)
-            RemoveFromStartup();
-        else
-            AddToStartup();
+        try
+        {
+            if (enable)
+                AddToStartup();
+            else
+                RemoveFromStartup();
+        }
+        finally
+        {
+            StartupChanged?.Invoke(IsStartupEnabled);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the "start with Windows" entry valid when the app was moved:
+    /// if the Run value points to an executable that no longer exists, it is re-written to the current executable.
+    /// An entry pointing to another existing copy of the app is left untouched.
+    /// Old unquoted entries for the current executable are rewritten in the quoted form.
+    /// </summary>
+    public static void RepairStartupPath()
+    {
+        if (string.IsNullOrWhiteSpace(ExecutablePath)) return;
+
+        try
+        {
+            using var key = OpenCurrentUserKey(RunKeyPath, true);
+            if (key?.GetValue(Constants.AppName) is not string value || string.IsNullOrWhiteSpace(value)) return;
+
+            var registeredPath = ExtractExecutablePath(value);
+            var isCurrentExecutable = IsSamePath(registeredPath, ExecutablePath!);
+
+            if (isCurrentExecutable && value.TrimStart().StartsWith("\"")) return;
+            if (!isCurrentExecutable && !string.IsNullOrWhiteSpace(registeredPath) && File.Exists(registeredPath)) return;
+
+            key.SetValue(Constants.AppName, Quote(ExecutablePath!));
+        }
+        catch
+        {
+            // Best effort only; never block the app start because of the registry.
+        }
     }
 
     private static bool IsInStartup()
@@ -26,8 +68,33 @@ public static class RegistryManager
 
         // Check if the application exists in the Run registry key and has the correct executable location
         using var key = OpenCurrentUserKey(RunKeyPath, false);
-        var value = key?.GetValue(Constants.AppName) as string;
-        return string.Equals(value, ExecutablePath, StringComparison.OrdinalIgnoreCase);
+        if (key?.GetValue(Constants.AppName) is not string value) return false;
+        return IsSamePath(ExtractExecutablePath(value), ExecutablePath!);
+    }
+
+    private static string Quote(string path) => $"\"{path}\"";
+
+    /// <summary>Gets the executable path from a Run value: <c>"C:\a b\app.exe" --args</c> or <c>C:\a b\app.exe</c>.</summary>
+    private static string ExtractExecutablePath(string value)
+    {
+        value = value.Trim();
+        if (!value.StartsWith("\"")) return value;
+
+        var closingQuote = value.IndexOf('"', 1);
+        return closingQuote > 0 ? value.Substring(1, closingQuote - 1) : value.Trim('"');
+    }
+
+    private static bool IsSamePath(string? path1, string path2)
+    {
+        if (string.IsNullOrWhiteSpace(path1)) return false;
+        try
+        {
+            return string.Equals(Path.GetFullPath(path1), Path.GetFullPath(path2), StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return string.Equals(path1, path2, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static bool IsStartupApprovedEnabled()
@@ -44,7 +111,7 @@ public static class RegistryManager
 
         // Add to Run registry key
         using var runKey = OpenCurrentUserKey(RunKeyPath, true);
-        runKey?.SetValue(Constants.AppName, ExecutablePath);
+        runKey?.SetValue(Constants.AppName, Quote(ExecutablePath!));
 
         // Create enabled entry in StartupApproved
         var enabledData = new byte[12];

@@ -47,6 +47,8 @@
     <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">Restore previously opened windows after restart or crash</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">Hide tray icon</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">Hide the system tray icon</sys:String>
+    <sys:String x:Key="Pref_StartWithWindows">Start with Windows</sys:String>
+    <sys:String x:Key="Pref_StartWithWindowsToolTip">Start Explorer Tab Utility in the system tray when you sign in to Windows (current user's startup entry)</sys:String>
     <sys:String x:Key="Pref_Language">Language</sys:String>
     <sys:String x:Key="Pref_LanguageToolTip">Display language of the application (takes effect after restart)</sys:String>
     <sys:String x:Key="Pref_LanguageAuto">System default</sys:String>
@@ -55,6 +57,7 @@
     <sys:String x:Key="Status_ReuseTabs">Reuse Tabs</sys:String>
     <sys:String x:Key="Status_KeyboardHook">Keyboard Hook</sys:String>
     <sys:String x:Key="Status_MouseHook">Mouse Hook</sys:String>
+    <sys:String x:Key="Msg_StartupChangeFailed" xml:space="preserve">Could not change the startup setting:&#x0a;{0}</sys:String>
     <sys:String x:Key="Msg_ShowAppAgain">You can show the app again by pressing {0}</sys:String>
     <sys:String x:Key="Msg_CannotHideTrayIcon">Cannot hide tray icon if no hotkey is configured to toggle visibility.</sys:String>
     <sys:String x:Key="Msg_RestorePreviousWindows">Do you want to restore previously opened windows?</sys:String>

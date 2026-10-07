@@ -210,6 +210,9 @@
                                     <GroupBox Header="{DynamicResource Pref_GroupApplication}"
                                               Style="{StaticResource CustomGroupBoxStyle}">
                                         <StackPanel Margin="8">
+                                            <CheckBox x:Name="CbStartWithWindows" Content="{DynamicResource Pref_StartWithWindows}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource Pref_StartWithWindowsToolTip}" />
                                             <CheckBox x:Name="CbAutoUpdate" Content="{DynamicResource Pref_AutoUpdate}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_AutoUpdateToolTip}" />

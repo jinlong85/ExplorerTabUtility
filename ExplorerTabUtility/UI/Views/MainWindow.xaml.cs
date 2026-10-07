@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly ProfileManager _profileManager;
     private readonly SystemTrayIcon _notifyIconManager;
     private nint _handle;
+    private bool _isRefreshingStartupCheckBox;
 
     public MainWindow()
     {
@@ -32,6 +33,10 @@ public partial class MainWindow : Window
         _profileManager = new ProfileManager(ProfilesPanel);
         _hookManager = new HookManager(_profileManager);
         _notifyIconManager = new SystemTrayIcon(_profileManager, _hookManager, ShowWindow);
+
+        // Fix the "start with Windows" entry if the app was moved, then show the real registry state
+        RegistryManager.RepairStartupPath();
+        RefreshStartWithWindowsCheckBox();
 
         SetupEventHandlers();
         StartHooks();
@@ -77,11 +82,16 @@ public partial class MainWindow : Window
         CbThemeIssue.Unchecked += CbThemeIssue_CheckedChanged;
         CbHideTrayIcon.Checked += CbHideTrayIcon_CheckedChanged;
         CbHideTrayIcon.Unchecked += CbHideTrayIcon_CheckedChanged;
+        CbStartWithWindows.Checked += CbStartWithWindows_CheckedChanged;
+        CbStartWithWindows.Unchecked += CbStartWithWindows_CheckedChanged;
+        RegistryManager.StartupChanged += _ => Dispatcher.BeginInvoke(new Action(RefreshStartWithWindowsCheckBox));
 
         // Window events
         SizeChanged += MainWindow_SizeChanged;
         Closing += MainWindow_Closing;
         Deactivated += MainWindow_Deactivated;
+        // The startup entry can also be changed from the tray menu, Task Manager or Windows Settings
+        Activated += (_, _) => RefreshStartWithWindowsCheckBox();
 
         // Custom title bar event handlers
         TitleBar.MouseLeftButtonDown += TitleBar_MouseLeftButtonDown;
@@ -188,6 +198,47 @@ public partial class MainWindow : Window
     }
 
     private void CbHideTrayIcon_CheckedChanged(object? _, RoutedEventArgs __) => UpdateTrayIconVisibility(true);
+
+    private void CbStartWithWindows_CheckedChanged(object? _, RoutedEventArgs __)
+    {
+        if (_isRefreshingStartupCheckBox) return;
+
+        try
+        {
+            RegistryManager.SetStartup(CbStartWithWindows.IsChecked == true);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show(this, Loc.Format("Msg_StartupChangeFailed", ex.Message), Loc.Get("App_Title"), icon: MessageBoxImage.Warning);
+        }
+
+        RefreshStartWithWindowsCheckBox();
+    }
+
+    private void RefreshStartWithWindowsCheckBox()
+    {
+        bool isEnabled;
+        try
+        {
+            isEnabled = RegistryManager.IsStartupEnabled;
+        }
+        catch
+        {
+            isEnabled = false;
+        }
+
+        if (CbStartWithWindows.IsChecked == isEnabled) return;
+
+        _isRefreshingStartupCheckBox = true;
+        try
+        {
+            CbStartWithWindows.IsChecked = isEnabled;
+        }
+        finally
+        {
+            _isRefreshingStartupCheckBox = false;
+        }
+    }
 
     private void InitializeLanguageComboBox()
     {

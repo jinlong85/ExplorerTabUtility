@@ -47,6 +47,8 @@
     <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">重启或崩溃后恢复之前打开的窗口</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">隐藏托盘图标</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">隐藏系统托盘图标</sys:String>
+    <sys:String x:Key="Pref_StartWithWindows">开机自动启动</sys:String>
+    <sys:String x:Key="Pref_StartWithWindowsToolTip">登录 Windows 时自动在系统托盘中启动 Explorer Tab Utility（写入当前用户的启动项）</sys:String>
     <sys:String x:Key="Pref_Language">界面语言</sys:String>
     <sys:String x:Key="Pref_LanguageToolTip">应用程序的显示语言（重启程序后生效）</sys:String>
     <sys:String x:Key="Pref_LanguageAuto">跟随系统</sys:String>
@@ -55,6 +57,7 @@
     <sys:String x:Key="Status_ReuseTabs">复用标签页</sys:String>
     <sys:String x:Key="Status_KeyboardHook">键盘快捷键</sys:String>
     <sys:String x:Key="Status_MouseHook">鼠标快捷键</sys:String>
+    <sys:String x:Key="Msg_StartupChangeFailed" xml:space="preserve">无法更改开机自动启动设置：&#x0a;{0}</sys:String>
     <sys:String x:Key="Msg_ShowAppAgain">之后可以按 {0} 重新显示本程序。</sys:String>
     <sys:String x:Key="Msg_CannotHideTrayIcon">没有配置“显示/隐藏本程序”的快捷键时，不能隐藏托盘图标。</sys:String>
     <sys:String x:Key="Msg_RestorePreviousWindows">是否恢复上次打开的窗口？</sys:String>
