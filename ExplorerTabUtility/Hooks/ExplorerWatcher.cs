@@ -52,6 +52,9 @@ public class ExplorerWatcher : IHook
     private readonly List<(string Location, int Tick)> _recentConversions = new();
     private readonly object _recentConversionsLock = new();
     private bool _reuseTabs = true;
+    private static long _lastOwnSelectionTicks;
+    // IShellView/ShellFolderView.SelectItem flags (SVSI_*)
+    private const int SvsiSelect = 0x1, SvsiDeselectOthers = 0x4, SvsiEnsureVisible = 0x8, SvsiFocused = 0x10;
     private bool _isForcingTabs;
     public bool IsHookActive => _isForcingTabs;
     public event Action? OnShellInitialized;
@@ -428,7 +431,8 @@ public class ExplorerWatcher : IHook
             if (shouldReopenAsTab)
             {
                 showAgain = false;
-                var windowRecord = new WindowRecord(location, hWnd, GetSelectedItems(window));
+                // Read the item(s) the other app asked to show BEFORE this window is closed (see CaptureSelectedItemsAsync).
+                var windowRecord = new WindowRecord(location, hWnd, await CaptureSelectedItemsAsync(window));
 
                 // Duplicate protection (opening a folder from another app could end up as two identical tabs):
                 // 1) The same folder was already converted moments ago (duplicate request / duplicate registration).
@@ -454,7 +458,13 @@ public class ExplorerWatcher : IHook
                 {
                     showAgain = true; // Restore the (now empty) original window if it still exists.
                     HookWindowEvents(window, windowInfo);
-                    SelectItems(window, windowRecord.SelectedItems);
+
+                    // Make sure the moved tab is the visible one, its window is in front and the requested item is selected.
+                    var movedTab = await GetTabHandle(window);
+                    if (movedTab != 0)
+                        await ActivateTabAsync(movedTab, windowRecord.SelectedItems);
+                    else
+                        SelectItems(window, windowRecord.SelectedItems);
                     return;
                 }
 
@@ -520,6 +530,16 @@ public class ExplorerWatcher : IHook
         {
             // Subscribe
             window.OnQuit += windowInfo.OnQuitHandler;
+
+            // Every navigation creates a new view object, so (re)subscribe to its selection changes each time.
+            windowInfo.ViewNavigateHandler = (object _, ref object _) =>
+            {
+                windowInfo.LastNavigatedAt = Stopwatch.GetTimestamp();
+                windowInfo.LastSelection = null;
+                HookViewEvents(window, windowInfo);
+            };
+            window.NavigateComplete2 += windowInfo.ViewNavigateHandler;
+            HookViewEvents(window, windowInfo);
             if (SettingsManager.RestorePreviousWindows)
             {
                 windowInfo.Location = GetLocation(window);
@@ -532,6 +552,7 @@ public class ExplorerWatcher : IHook
         }
         catch
         {
+            UnhookViewEvents(windowInfo);
             lock (_windowEntryDictLock)
                 _windowEntryDict.Remove(window);
         }
@@ -539,6 +560,7 @@ public class ExplorerWatcher : IHook
     private void RemoveWindowAndUnhookEvents(InternetExplorer window, WindowInfo windowInfo, bool useLock = true)
     {
         // Unsubscribe
+        UnhookWindowViewEvents(window, windowInfo);
         if (windowInfo.OnQuitHandler != null) window.OnQuit -= windowInfo.OnQuitHandler;
         if (windowInfo.OnNavigateHandler != null) window.NavigateComplete2 -= windowInfo.OnNavigateHandler;
 
@@ -636,9 +658,9 @@ public class ExplorerWatcher : IHook
                 var existingTab = SearchForTab(windowToOpen.Location);
                 if (existingTab != 0)
                 {
-                    windowHandle = WinApi.GetParent(existingTab);
-                    await SelectTabByHandle(windowHandle, existingTab);
-                    WinApi.RestoreWindowToForeground(windowHandle);
+                    // Switch to the existing tab, bring its window to the front and select the requested item(s)
+                    // (previously the item the other app asked to show was not selected when a tab was reused).
+                    await ActivateTabAsync(existingTab, windowToOpen.SelectedItems);
                     return;
                 }
             }
@@ -851,6 +873,144 @@ public class ExplorerWatcher : IHook
             await Task.Delay(100);
         }
     }
+    /// <summary>
+    /// Reads the selection of a window that is about to be converted into a tab.
+    /// When another app asks Explorer to show a file ("explorer /select,&lt;file&gt;", SHOpenFolderAndSelectItems),
+    /// Explorer selects it only after the folder finished loading, which is usually AFTER the window was registered.
+    /// So wait (bounded) for the folder to load and give the selection a short moment to appear.
+    /// </summary>
+    private static async Task<string[]?> CaptureSelectedItemsAsync(InternetExplorer window)
+    {
+        try
+        {
+            await Helper.DoUntilConditionAsync(() => window.ReadyState, s => s == tagREADYSTATE.READYSTATE_COMPLETE, 1_000, 30);
+        }
+        catch
+        {
+            // Window already gone; read whatever we can below.
+        }
+
+        var startTicks = Stopwatch.GetTimestamp();
+        while (true)
+        {
+            string[]? selection = null;
+            try { selection = GetSelectedItems(window); }
+            catch { /* view not ready yet */ }
+
+            if (selection != null || Helper.IsTimeUp(startTicks, 150)) return selection;
+            await Task.Delay(30);
+        }
+    }
+
+    // ---- Explorer showed an item in an existing tab that is not the active one ----
+    // When another app asks Explorer to show a folder/file ("Open file location", "Show in folder", "explorer /select,<file>",
+    // SHOpenFolderAndSelectItems) and that folder is ALREADY open in some tab, Explorer does not open a new window.
+    // It selects the item(s) in that existing tab and brings its window to the front, but it never switches to that tab,
+    // so the user keeps looking at the previously active tab (see w4po/ExplorerTabUtility#126 and #128).
+    // Because no new window is registered, the "window to tab" logic never sees this. Instead we watch selection changes:
+    // the user cannot change the selection of a tab that is not visible, so a selection change in an inactive tab,
+    // followed by its window coming to the foreground, means "show this tab".
+    private void HookViewEvents(InternetExplorer window, WindowInfo windowInfo)
+    {
+        UnhookViewEvents(windowInfo);
+        try
+        {
+            if (window.Document is not ShellFolderView view) return;
+
+            windowInfo.SelectionChangedHandler ??= () => OnViewSelectionChanged(window, windowInfo);
+            ((DShellFolderViewEvents_Event)view).SelectionChanged += windowInfo.SelectionChangedHandler;
+            windowInfo.View = view;
+        }
+        catch
+        {
+            // The view is not ready yet (we hook again on NavigateComplete2) or the window was closed.
+        }
+    }
+    private static void UnhookViewEvents(WindowInfo windowInfo)
+    {
+        var view = windowInfo.View;
+        windowInfo.View = null;
+        if (view == null || windowInfo.SelectionChangedHandler == null) return;
+
+        try { ((DShellFolderViewEvents_Event)view).SelectionChanged -= windowInfo.SelectionChangedHandler; }
+        catch { /* The old view is already gone */ }
+    }
+    private static void UnhookWindowViewEvents(InternetExplorer window, WindowInfo windowInfo)
+    {
+        UnhookViewEvents(windowInfo);
+        if (windowInfo.ViewNavigateHandler == null) return;
+
+        try { window.NavigateComplete2 -= windowInfo.ViewNavigateHandler; }
+        catch { /* The window is already gone */ }
+    }
+    private void OnViewSelectionChanged(InternetExplorer window, WindowInfo windowInfo)
+    {
+        try
+        {
+            if (!_isForcingTabs && !_reuseTabs) return;
+
+            // Ignore our own selection changes and the initial selection of a new tab / a folder that was just navigated to.
+            if (!Helper.IsTimeUp(_lastOwnSelectionTicks, 700) ||
+                !Helper.IsTimeUp(windowInfo.CreatedAt, 2_000) ||
+                !Helper.IsTimeUp(windowInfo.LastNavigatedAt, 1_000))
+                return;
+
+            if (!_windowEntryDict.TryGetValue(window, out WindowEntry entry) || entry.OptionalKey is not { } tabHandle || tabHandle == 0)
+                return;
+
+            var hostWindow = WinApi.GetParent(tabHandle);
+            if (!Helper.IsFileExplorerWindow(hostWindow)) return;
+
+            // The visible tab: a normal selection change by the user. Nothing to do (and don't read big selections here).
+            if (GetActiveTabHandle(hostWindow) == tabHandle)
+            {
+                windowInfo.LastSelection = null;
+                return;
+            }
+
+            if (Interlocked.Exchange(ref windowInfo.RevealCheckPending, 1) == 1) return;
+            _ = SwitchToRevealedTabAsync(window, windowInfo, tabHandle, hostWindow);
+        }
+        catch
+        {
+            // Never let an event handler throw back into Explorer.
+        }
+    }
+    private async Task SwitchToRevealedTabAsync(InternetExplorer window, WindowInfo windowInfo, nint tabHandle, nint hostWindow)
+    {
+        try
+        {
+            // Explorer changes the selection in several steps (deselect others, select, focus); let it settle.
+            await Task.Delay(150);
+            if (GetActiveTabHandle(hostWindow) == tabHandle) return;
+
+            var selection = GetSelectedItems(window);
+            var previous = windowInfo.LastSelection;
+            windowInfo.LastSelection = selection;
+            if (selection == null) return;
+
+            // Items only disappeared from the selection (deleted / moved away): not a request to show something.
+            if (previous != null && selection.Length < previous.Length &&
+                !selection.Except(previous, StringComparer.OrdinalIgnoreCase).Any())
+                return;
+
+            // Explorer brings the window to the front right after selecting the item(s). If that doesn't happen,
+            // it was not a "show this" request (e.g. a background tab refreshed its content), so leave it alone.
+            var isForeground = await Helper.DoUntilConditionAsync(() => WinApi.GetForegroundWindow() == hostWindow, b => b, 1_500, 50);
+            if (!isForeground || GetActiveTabHandle(hostWindow) == tabHandle) return;
+
+            await ActivateTabAsync(tabHandle, selection);
+        }
+        catch
+        {
+            // The tab might have been closed meanwhile.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref windowInfo.RevealCheckPending, 0);
+        }
+    }
+
     private bool TryGetRecentlyClosedWindow(string location, out WindowRecord? closedWindow, int maxAge = 2_000)
     {
         nint targetPidl = 0;
@@ -944,10 +1104,32 @@ public class ExplorerWatcher : IHook
         var result = new string[count];
         for (var i = 0; i < count; i++)
         {
-            result[i] = selectedItems.Item(i).Name;
+            result[i] = GetItemName(selectedItems.Item(i));
         }
 
         return result;
+    }
+    /// <summary>
+    /// Name that <c>Folder.ParseName</c> can resolve again. <see cref="FolderItem.Name"/> is the display name
+    /// (e.g. "report" instead of "report.pdf" when file extensions are hidden), so prefer the real file name.
+    /// </summary>
+    private static string GetItemName(FolderItem item)
+    {
+        try
+        {
+            var path = item.Path;
+            if (!string.IsNullOrEmpty(path) && !path.StartsWith("::") && System.IO.Path.IsPathRooted(path))
+            {
+                var fileName = System.IO.Path.GetFileName(path.TrimEnd('\\'));
+                if (!string.IsNullOrEmpty(fileName)) return fileName;
+            }
+        }
+        catch
+        {
+            // Fall back to the display name.
+        }
+
+        return item.Name;
     }
     private static void SelectItems(InternetExplorer window, string[]? names)
     {
@@ -955,12 +1137,19 @@ public class ExplorerWatcher : IHook
 
         if (window.Document is not ShellFolderView document) return;
 
+        // Our own selection changes must not be mistaken for "Explorer showed an item in this tab".
+        _lastOwnSelectionTicks = Stopwatch.GetTimestamp();
+
+        var isFirst = true;
         for (var i = 0; i < names.Length; i++)
         {
             var name = names[i];
             object item = document.Folder.ParseName(name);
             if (item == null) continue;
-            document.SelectItem(ref item, 1);
+
+            // Like "explorer /select": the first item replaces the selection, gets the focus and is scrolled into view.
+            document.SelectItem(ref item, isFirst ? SvsiSelect | SvsiDeselectOthers | SvsiEnsureVisible | SvsiFocused : SvsiSelect);
+            isFirst = false;
         }
     }
     private static string GetLocation(InternetExplorer window)
@@ -1141,6 +1330,7 @@ public class ExplorerWatcher : IHook
         foreach (var (window, windowInfo) in _windowEntryDict)
         {
             // Unsubscribe
+            UnhookWindowViewEvents(window, windowInfo);
             if (windowInfo.OnQuitHandler != null) window.OnQuit -= windowInfo.OnQuitHandler;
             if (windowInfo.OnNavigateHandler != null) window.NavigateComplete2 -= windowInfo.OnNavigateHandler;
 
