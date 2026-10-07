@@ -238,15 +238,25 @@
                                             <CheckBox x:Name="CbSaveClosedHistory" Content="{DynamicResource Pref_SaveClosedHistory}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_SaveClosedHistoryToolTip}" />
-                                            <CheckBox x:Name="CbRestorePreviousWindows" Content="{DynamicResource Pref_RestorePreviousWindows}"
-                                                      Style="{StaticResource CustomCheckBoxStyle}"
-                                                      ToolTip="{DynamicResource Pref_RestorePreviousWindowsToolTip}" />
                                             <CheckBox x:Name="CbAutoMergeWindows" Content="{DynamicResource Pref_AutoMergeWindows}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_AutoMergeWindowsToolTip}" />
                                             <CheckBox x:Name="CbAutoRestoreSession" Content="{DynamicResource Pref_AutoRestoreSession}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_AutoRestoreSessionToolTip}" />
+                                            <!-- The older "ask at startup" restore; replaced by (and hidden while) "Automatically restore last session's tabs" is on. -->
+                                            <CheckBox x:Name="CbRestorePreviousWindows" Content="{DynamicResource Pref_RestorePreviousWindows}"
+                                                      ToolTip="{DynamicResource Pref_RestorePreviousWindowsToolTip}">
+                                                <CheckBox.Style>
+                                                    <Style TargetType="CheckBox" BasedOn="{StaticResource CustomCheckBoxStyle}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsChecked, ElementName=CbAutoRestoreSession}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </CheckBox.Style>
+                                            </CheckBox>
                                             <CheckBox x:Name="CbHideTrayIcon" Content="{DynamicResource Pref_HideTrayIcon}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource Pref_HideTrayIconToolTip}" />

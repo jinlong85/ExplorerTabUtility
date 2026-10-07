@@ -50,12 +50,12 @@
     <sys:String x:Key="Pref_ThemeIssueToolTip" xml:space="preserve">改用另一种隐藏窗口的方式，以保留你自定义的文件资源管理器主题。&#x0a;如果遇到与主题相关的问题，请启用此项</sys:String>
     <sys:String x:Key="Pref_SaveClosedHistory">保存关闭历史</sys:String>
     <sys:String x:Key="Pref_SaveClosedHistoryToolTip">保存已关闭窗口的历史记录，以便之后重新打开（用于“重新打开已关闭”和“标签页搜索”）</sys:String>
-    <sys:String x:Key="Pref_RestorePreviousWindows">恢复上次的窗口</sys:String>
-    <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">重启或崩溃后恢复之前打开的窗口</sys:String>
+    <sys:String x:Key="Pref_RestorePreviousWindows">启动时询问是否恢复上次的窗口</sys:String>
+    <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">程序启动后打开第一个资源管理器窗口时，询问是否重新打开上次程序退出或资源管理器崩溃时打开的窗口。仅在“自动恢复上次的标签页”关闭时显示，开启后由它取代。</sys:String>
     <sys:String x:Key="Pref_AutoMergeWindows">自动合并多余窗口</sys:String>
     <sys:String x:Key="Pref_AutoMergeWindowsToolTip">同时打开了多个资源管理器窗口时（例如程序启动前已打开的窗口、资源管理器重启后恢复的窗口），在你短暂停止操作鼠标和键盘后，自动把它们的标签页移到同一个窗口中。特意以单独窗口打开的窗口（按住 Ctrl+Shift 打开、拖出来的标签页）不会被合并。仅在“窗口转标签”开启时生效。</sys:String>
     <sys:String x:Key="Pref_AutoRestoreSession">自动恢复上次的标签页</sys:String>
-    <sys:String x:Key="Pref_AutoRestoreSessionToolTip">记住打开的文件夹。重启电脑或重新登录后、资源管理器崩溃或重启后，自动把它们作为标签页重新打开在同一个窗口中。你自己关闭的窗口不会被自动重新打开，需要时可使用托盘菜单（或快捷键）中的“恢复上次的标签页”。已不存在的文件夹会被跳过，最多打开 30 个标签页。</sys:String>
+    <sys:String x:Key="Pref_AutoRestoreSessionToolTip">记住打开的文件夹。重启电脑或重新登录后、资源管理器崩溃或重启后，自动把它们作为标签页重新打开在同一个窗口中。你自己关闭的窗口不会被自动重新打开，需要时可使用托盘菜单（或快捷键）中的“恢复上次的标签页”。已不存在的文件夹会被跳过，最多打开 30 个标签页。开启后取代“启动时询问是否恢复上次的窗口”（该选项会被隐藏）。</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">隐藏托盘图标</sys:String>
     <sys:String x:Key="Pref_HideTrayIconToolTip">隐藏系统托盘图标</sys:String>
     <sys:String x:Key="Pref_StartWithWindows">开机自动启动</sys:String>
