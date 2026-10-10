@@ -140,7 +140,7 @@
     <sys:String x:Key="Tray_MouseHookToolTip">Enable or disable mouse shortcuts</sys:String>
     <sys:String x:Key="Tray_MouseHookNoProfilesToolTip">No mouse shortcuts yet. Click to set one up.</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">Toggle automatic redirection of new Explorer windows to tabs</sys:String>
-    <sys:String x:Key="Tray_ReuseTabsToolTip">When enabled, navigates to existing tabs instead of opening duplicate tabs</sys:String>
+    <sys:String x:Key="Tray_ReuseTabsToolTip">When enabled, navigates to existing tabs instead of opening duplicate tabs. A new tab you open in Explorer (Ctrl+T / "+", "Open in new tab") that ends up on a folder already open in another tab of the same window is closed, and the existing tab is shown instead.</sys:String>
     <sys:String x:Key="Tray_MergeWindows">Merge all windows now</sys:String>
     <sys:String x:Key="Tray_MergeWindowsToolTip">Move the tabs of all File Explorer windows into the first (oldest) window and close the others</sys:String>
     <sys:String x:Key="Merge_Done">Merged {0} window(s) into the first window ({1} tab(s) moved, {2} already open there and not opened again).</sys:String>

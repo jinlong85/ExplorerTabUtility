@@ -140,7 +140,7 @@
     <sys:String x:Key="Tray_MouseHookToolTip">启用或禁用鼠标快捷键</sys:String>
     <sys:String x:Key="Tray_MouseHookNoProfilesToolTip">还没有鼠标快捷键，点击进行设置</sys:String>
     <sys:String x:Key="Tray_WindowHookToolTip">开启或关闭：自动把新打开的资源管理器窗口转为标签页</sys:String>
-    <sys:String x:Key="Tray_ReuseTabsToolTip">开启后，如果位置已在某个标签页中打开，就直接切换过去，而不是重复打开</sys:String>
+    <sys:String x:Key="Tray_ReuseTabsToolTip">开启后，如果位置已在某个标签页中打开，就直接切换过去，而不是重复打开。在资源管理器中新建的标签页（Ctrl+T、“+”按钮、“在新标签页中打开”）如果打开的文件夹在同一窗口的另一个标签页中已经打开，会自动关闭这个新标签页，并切换到已有的标签页</sys:String>
     <sys:String x:Key="Tray_MergeWindows">立即合并所有窗口</sys:String>
     <sys:String x:Key="Tray_MergeWindowsToolTip">把所有资源管理器窗口的标签页移到最早打开的窗口中，并关闭其他窗口</sys:String>
     <sys:String x:Key="Merge_Done">已将 {0} 个窗口合并到最早打开的窗口（移入 {1} 个标签页，{2} 个已经打开的文件夹没有重复打开）。</sys:String>

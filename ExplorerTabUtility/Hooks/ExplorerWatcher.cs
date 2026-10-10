@@ -1143,7 +1143,8 @@ public partial class ExplorerWatcher : IHook
                     KeepAsWindow(hWnd);
             }
 
-            HookWindowEvents(window, windowInfo);
+            // A new tab the user opened (not a detached / re-attached tab): close it if its folder is already open in the same window.
+            HookWindowEvents(window, windowInfo, checkDuplicate: !isRecentlyClosed);
         }
         catch {/**/}
         finally
@@ -1160,7 +1161,7 @@ public partial class ExplorerWatcher : IHook
             }
         }
     }
-    private void HookWindowEvents(InternetExplorer window, WindowInfo windowInfo)
+    private void HookWindowEvents(InternetExplorer window, WindowInfo windowInfo, bool checkDuplicate = false)
     {
         // Create strongly-typed handlers so we can remove them later
         windowInfo.OnQuitHandler = () =>
@@ -1199,9 +1200,15 @@ public partial class ExplorerWatcher : IHook
                 windowInfo.LastNavigatedAt = Stopwatch.GetTimestamp();
                 windowInfo.LastSelection = null;
                 HookViewEvents(window, windowInfo);
+                OnTabNavigatedForDuplicateCheck(window, windowInfo);
             };
             window.NavigateComplete2 += windowInfo.ViewNavigateHandler;
             HookViewEvents(window, windowInfo);
+
+            try { windowInfo.LastViewLocation = GetLocation(window); }
+            catch { /* the view is not ready yet */ }
+            // A tab that was opened directly at a folder (e.g. "Open in new tab"): check it once, too.
+            if (checkDuplicate) ScheduleDuplicateTabCheck(window, windowInfo);
             if (SettingsManager.RestorePreviousWindows)
             {
                 windowInfo.Location = GetLocation(window);
@@ -1352,6 +1359,11 @@ public partial class ExplorerWatcher : IHook
             var window = await Helper.DoUntilNotDefaultAsync(() => GetWindowByTabHandle(newTabHandle), 2_000, 50);
             if (window == null) return;
 
+            // "Duplicate tab" creates a duplicate on purpose: never close it as a duplicate.
+            if (isDuplicate)
+                lock (_windowEntryDictLock)
+                    if (_windowEntryDict.TryGetValue(window, out WindowInfo createdInfo)) createdInfo.SkipDuplicateCheck = true;
+
             var tcs = new TaskCompletionSource<bool>();
             DWebBrowserEvents2_NavigateComplete2EventHandler navigateHandler = null!;
             navigateHandler = (object _, ref object _) =>
@@ -1383,13 +1395,17 @@ public partial class ExplorerWatcher : IHook
         }
         finally
         {
+            _lastOwnTabOpenAt = Stopwatch.GetTimestamp();
             _toOpenWindowsLock.Release();
         }
 
         // A converted window's folder may also show up as a separate new tab created by Explorer itself
         // a moment later. If that happens, close OUR tab (never one we didn't create) and keep Explorer's.
         if (closeIfDuplicated && createdWindow != null)
+        {
             await CloseOwnTabIfDuplicatedAsync(windowToOpen, createdWindow, createdTabHandle, createdInWindow);
+            _lastOwnTabOpenAt = Stopwatch.GetTimestamp();
+        }
     }
 
     /// <summary>
@@ -1561,6 +1577,146 @@ public partial class ExplorerWatcher : IHook
 
             if (selection != null || Helper.IsTimeUp(startTicks, 150)) return selection;
             await Task.Delay(30);
+        }
+    }
+
+    // ---- A new tab shows a folder that is already open in another tab of the same window ----
+    // "Reuse Tabs" means one tab per folder. Folders opened through the app (window hook, merge, restore) already reuse the
+    // existing tab, but a tab the user adds in Explorer itself (Ctrl+T / "+" and then navigating, "Open in new tab") did not.
+    // Only the "new tab" flow is checked: a tab that comes from a start page (Home, This PC, ...) or from no folder at all
+    // and lands on a real folder that another tab of the same window already shows. Then the NEW tab is closed (Ctrl+W
+    // command on that tab, only while it is still the active tab) and the existing tab is shown through the guarded tab
+    // switch, with the new tab's selection. Navigating an existing tab (Back, Up, clicking into a folder) never closes it.
+    private const int DuplicateTabSettleMs = 500;
+    private long _lastOwnTabOpenAt;
+
+    /// <summary>Tabs the app is creating or navigating right now are not the user's: never close them as duplicates.</summary>
+    private bool IsBusyWithOwnTabs()
+    {
+        return _isMerging || _isRestoring || _toOpenWindowsLock.CurrentCount == 0 ||
+               !Helper.IsTimeUp(_lastOwnTabOpenAt, 2_500) ||
+               !Helper.IsTimeUp(_lastMergeFinishedAt, 2_000) ||
+               Helper.HiddenWindows.Keys.Any(Helper.IsFileExplorerWindow);
+    }
+
+    /// <summary>
+    /// A location that counts for duplicate tabs: a real file system folder (drive or network path) that is not the
+    /// folder new tabs start in. Home, This PC, Gallery, Network, libraries, search results, Control Panel and other
+    /// shell:::{...} locations are never duplicates.
+    /// </summary>
+    private bool IsDuplicateCheckCandidate(string? location)
+    {
+        if (string.IsNullOrWhiteSpace(location)) return false;
+        var isFileSystem = location!.StartsWith("file:", StringComparison.OrdinalIgnoreCase) ||
+                           location.StartsWith(@"\\", StringComparison.Ordinal) ||
+                           (location.Length >= 2 && char.IsLetter(location[0]) && location[1] == ':');
+        if (!isFileSystem) return false;
+        if (location.IndexOf("search-ms:", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        return !IsSameLocation(location, _defaultLocation);
+    }
+
+    private void OnTabNavigatedForDuplicateCheck(InternetExplorer window, WindowInfo windowInfo)
+    {
+        try
+        {
+            string location;
+            try { location = GetLocation(window); }
+            catch { return; }
+
+            var previous = windowInfo.LastViewLocation;
+            windowInfo.LastViewLocation = location;
+
+            // Only a tab that comes from a start page / no folder (the "new tab" flow), never a normal navigation.
+            if (IsDuplicateCheckCandidate(previous)) return;
+
+            ScheduleDuplicateTabCheck(window, windowInfo);
+        }
+        catch
+        {
+            // Never let an event handler throw back into Explorer.
+        }
+    }
+
+    private void ScheduleDuplicateTabCheck(InternetExplorer window, WindowInfo windowInfo)
+    {
+        if (!_reuseTabs || windowInfo.SkipDuplicateCheck || _shellWindows == null || IsBusyWithOwnTabs()) return;
+        if (!IsDuplicateCheckCandidate(windowInfo.LastViewLocation)) return;
+
+        var version = Interlocked.Increment(ref windowInfo.DuplicateCheckVersion);
+        _ = CloseTabIfDuplicateAsync(window, windowInfo, version);
+    }
+
+    private async Task CloseTabIfDuplicateAsync(InternetExplorer window, WindowInfo windowInfo, int version)
+    {
+        try
+        {
+            // Let the navigation settle; a newer navigation of this tab replaces this check.
+            await Task.Delay(DuplicateTabSettleMs);
+            var waitStart = Stopwatch.GetTimestamp();
+            while (IsMouseButtonDown() && !Helper.IsTimeUp(waitStart, 3_000)) await Task.Delay(100);
+
+            if (version != Volatile.Read(ref windowInfo.DuplicateCheckVersion)) return;
+            if (!_reuseTabs || windowInfo.SkipDuplicateCheck || IsBusyWithOwnTabs()) return;
+
+            var location = GetLocation(window);
+            if (!IsDuplicateCheckCandidate(location)) return;
+
+            var tabHandle = await GetTabHandle(window);
+            if (tabHandle == 0) return;
+            var hostWindow = WinApi.GetParent(tabHandle);
+            if (!Helper.IsFileExplorerWindow(hostWindow)) return;
+
+            // Only the tab the user is looking at (a background tab is never closed).
+            if (GetActiveTabHandle(hostWindow) != tabHandle) return;
+
+            // The other tab of the same window that already shows this folder (not a "Duplicate tab" on purpose).
+            nint existingTab = 0;
+            foreach (var (tab, frame) in GetRegisteredTabs())
+            {
+                if (frame != hostWindow || ReferenceEquals(tab, window)) continue;
+
+                WindowInfo? otherInfo;
+                lock (_windowEntryDictLock)
+                    otherInfo = _windowEntryDict.TryGetValue(tab, out WindowInfo info) ? info : null;
+                if (otherInfo?.SkipDuplicateCheck == true || !IsTabAt(tab, location)) continue;
+
+                var otherHandle = await GetTabHandle(tab);
+                if (otherHandle == 0 || otherHandle == tabHandle) continue;
+
+                existingTab = otherHandle;
+                break;
+            }
+            if (existingTab == 0) return;
+
+            var selectedItems = GetSelectedItemsForMerge(window);
+            var closedSince = Environment.TickCount;
+
+            await _toOpenWindowsLock.WaitAsync();
+            try
+            {
+                // Check again right before closing: still settled, still the active tab, still the same folder.
+                if (!await WaitForTabsSettledAsync(hostWindow, 1_500)) return;
+                if (version != Volatile.Read(ref windowInfo.DuplicateCheckVersion) ||
+                    GetActiveTabHandle(hostWindow) != tabHandle || !IsTabAt(window, location) ||
+                    WinApi.GetParent(existingTab) != hostWindow)
+                    return;
+
+                // Send 0xA021 magic command (CTRL + W) to the duplicate tab, like CloseOwnTabIfDuplicatedAsync.
+                WinApi.SendMessage(tabHandle, WinApi.WM_COMMAND, 0xA021, 1);
+            }
+            finally
+            {
+                _toOpenWindowsLock.Release();
+            }
+
+            // The tab was not really closed by the user: keep it out of the "reopen closed" history.
+            RemoveClosedRecords(hostWindow, closedSince);
+
+            await ActivateTabAsync(existingTab, selectedItems);
+        }
+        catch
+        {
+            // The tab or window might have been closed meanwhile.
         }
     }
 
