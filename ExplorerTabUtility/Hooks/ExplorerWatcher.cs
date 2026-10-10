@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Interop;
 using ExplorerTabUtility.Managers;
@@ -369,6 +370,9 @@ public partial class ExplorerWatcher : IHook
     // times in ShellWindows (registration) order.
     private readonly ConcurrentDictionary<nint, long> _windowFirstSeen = new();
     private readonly SemaphoreSlim _mergeLock = new(1);
+    // Shell windows this app has already looked at. Fallback for the "seenBefore" property, which not every entry of
+    // ShellWindows implements (PutProperty/GetProperty can fail with E_NOTIMPL).
+    private readonly ConditionalWeakTable<object, object> _seenShellWindows = new();
     private Timer? _autoMergeTimer;
     private volatile bool _autoMergeEnabled;
     private volatile bool _isMerging;
@@ -717,7 +721,9 @@ public partial class ExplorerWatcher : IHook
                 try
                 {
                     if (_shellWindows.Item(i) is not InternetExplorer tab) continue;
-                    result.Add((tab, new IntPtr(tab.HWND)));
+                    var frame = new IntPtr(tab.HWND);
+                    if (frame == 0) continue; // an entry without a window
+                    result.Add((tab, frame));
                 }
                 catch
                 {
@@ -950,19 +956,54 @@ public partial class ExplorerWatcher : IHook
         if (_windowEntryDict.Count < 2 || Helper.IsCtrlShiftDown()) return;
         Helper.HideWindow(hWnd, SettingsManager.HaveThemeIssue);
     }
+    /// <summary>
+    /// The entry <paramref name="index"/> of ShellWindows if it is a real Explorer tab (it has a window), else null.
+    /// ShellWindows can contain broken "ghost" entries (empty name/location, HWND 0) whose members fail with E_NOTIMPL.
+    /// </summary>
+    private InternetExplorer? GetValidShellWindow(int index)
+    {
+        try
+        {
+            if (_shellWindows.Item(index) is not InternetExplorer window) return null;
+            return window.HWND != 0 ? window : null;
+        }
+        catch
+        {
+            return null; // closed meanwhile, or a broken entry
+        }
+    }
+
+    private bool IsSeenBefore(InternetExplorer window)
+    {
+        if (_seenShellWindows.TryGetValue(window, out _)) return true;
+        try { return window.GetProperty("seenBefore") is not null; }
+        catch { return false; } // not implemented by this entry: rely on the app's own list
+    }
+
+    private void MarkSeenBefore(InternetExplorer window)
+    {
+        try { _seenShellWindows.Add(window, true); }
+        catch (ArgumentException) { /* already marked */ }
+
+        // The property survives our COM wrapper being released (the app's own list doesn't), so set it when possible.
+        try { window.PutProperty("seenBefore", true); }
+        catch { /* E_NOTIMPL on some entries */ }
+    }
+
     private InternetExplorer? GetRecentlyCreatedWindow(out WindowInfo? windowInfo)
     {
         // When a new window is registered, it's typically the last in the collection
         var count = _shellWindows.Count;
         for (var i = count - 1; i >= 0; i--)
         {
-            if (_shellWindows.Item(i) is not InternetExplorer window) continue;
+            // One broken entry (e.g. a "ghost" entry without a window) must never stop the others from being handled.
+            if (GetValidShellWindow(i) is not { } window) continue;
 
             lock (_windowEntryDictLock)
             {
                 if (_windowEntryDict.Keys.Contains(window)) continue;
-                if (window.GetProperty("seenBefore") is not null) continue;
-                window.PutProperty("seenBefore", true);
+                if (IsSeenBefore(window)) continue;
+                MarkSeenBefore(window);
 
                 windowInfo = new WindowInfo();
                 _windowEntryDict.Add(window, windowInfo);
@@ -1832,20 +1873,40 @@ public partial class ExplorerWatcher : IHook
     private void StartExplorerProcessCheck() => _explorerCheckTimer = new Timer(CheckForMainExplorer, null, 0, 1000);
     private void CheckForMainExplorer(object? state)
     {
-        var process = Helper.GetMainExplorerProcess();
-        if (process == null) return;
-        
-        _explorerCheckTimer?.Dispose();
-        _explorerCheckTimer = null;
-        
-        lock (_processLock)
+        // Timer callback: an exception here would end the process, so nothing may escape.
+        try
         {
-            if (_mainExplorerProcessId != 0) return;
-            
-            _mainExplorerProcessId = process.Id;
-            InitializeShellObjects();
-            OnShellInitialized?.Invoke();
-            OnShellReadyForSession();
+            var process = Helper.GetMainExplorerProcess();
+            if (process == null) return;
+
+            _explorerCheckTimer?.Dispose();
+            _explorerCheckTimer = null;
+
+            lock (_processLock)
+            {
+                if (_mainExplorerProcessId != 0) return;
+
+                _mainExplorerProcessId = process.Id;
+                try
+                {
+                    InitializeShellObjects();
+                }
+                catch
+                {
+                    // Explorer is not ready (or restarting): start over in a moment instead of crashing.
+                    _mainExplorerProcessId = 0;
+                    try { DisposeShellObjects(); } catch { /* partly initialized */ }
+                    _explorerCheckTimer = new Timer(CheckForMainExplorer, null, 3_000, 1_000);
+                    return;
+                }
+
+                OnShellInitialized?.Invoke();
+                OnShellReadyForSession();
+            }
+        }
+        catch
+        {
+            // Keep running; the window hook simply isn't ready yet.
         }
     }
     private void OnExplorerProcessTerminated(object? s, ProcessEventArgs e)
@@ -1921,20 +1982,28 @@ public partial class ExplorerWatcher : IHook
         var seenTicks = Stopwatch.GetTimestamp();
         for (var i = 0; i < count; i++)
         {
-            if (_shellWindows.Item(i) is not InternetExplorer window)
+            // One broken entry (e.g. a "ghost" entry without a window) must never stop the app from starting.
+            if (GetValidShellWindow(i) is not { } window)
                 continue;
-            hasOpen = true;
 
             // Already open: older than anything opened from now on, in registration order (the window of the first tab is the oldest).
             try { _windowFirstSeen.TryAdd(new IntPtr(window.HWND), seenTicks - (count - i)); }
             catch { /* closed meanwhile */ }
 
             var windowInfo = new WindowInfo();
-            _windowEntryDict.Add(window, windowInfo);
-            window.PutProperty("seenBefore", true);
+            try
+            {
+                _windowEntryDict.Add(window, windowInfo);
+                MarkSeenBefore(window);
 
-            _ = GetTabHandle(window);
-            HookWindowEvents(window, windowInfo);
+                _ = GetTabHandle(window);
+                HookWindowEvents(window, windowInfo);
+                hasOpen = true;
+            }
+            catch
+            {
+                try { _windowEntryDict.Remove(window); } catch { /* not added */ }
+            }
         }
 
         if (!hasOpen) return;
