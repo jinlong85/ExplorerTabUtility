@@ -127,7 +127,7 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         if (TrayIcon.Visibility != Visibility.Visible) return;
 
         var message = result.MergedWindows > 0
-            ? Loc.Format("Merge_Done", result.MergedWindows, result.MovedTabs)
+            ? Loc.Format("Merge_Done", result.MergedWindows, result.MovedTabs, result.SkippedTabs)
             : Loc.Get("Merge_Nothing");
         TrayIcon.ShowBalloonTip(Loc.Get("App_Title"), message, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
     }

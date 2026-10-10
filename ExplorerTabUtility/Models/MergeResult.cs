@@ -11,4 +11,7 @@ public sealed class MergeResult
 
     /// <summary>Tabs opened in the target window.</summary>
     public int MovedTabs { get; set; }
+
+    /// <summary>Tabs of merged windows that were not reopened because their folder was already open in the target window.</summary>
+    public int SkippedTabs { get; set; }
 }

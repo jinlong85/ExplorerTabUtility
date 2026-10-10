@@ -53,7 +53,7 @@
     <sys:String x:Key="Pref_RestorePreviousWindows">启动时询问是否恢复上次的窗口</sys:String>
     <sys:String x:Key="Pref_RestorePreviousWindowsToolTip">程序启动后打开第一个资源管理器窗口时，询问是否重新打开上次程序退出或资源管理器崩溃时打开的窗口。仅在“自动恢复上次的标签页”关闭时显示，开启后由它取代。</sys:String>
     <sys:String x:Key="Pref_AutoMergeWindows">自动合并多余窗口</sys:String>
-    <sys:String x:Key="Pref_AutoMergeWindowsToolTip">同时打开了多个资源管理器窗口时（例如程序启动前已打开的窗口、资源管理器重启后恢复的窗口），在你短暂停止操作鼠标和键盘后，自动把它们的标签页移到同一个窗口中。特意以单独窗口打开的窗口（按住 Ctrl+Shift 打开、拖出来的标签页）不会被合并。仅在“窗口转标签”开启时生效。</sys:String>
+    <sys:String x:Key="Pref_AutoMergeWindowsToolTip">同时打开了多个资源管理器窗口时（例如程序启动前已打开的窗口、资源管理器重启后恢复的窗口），在你短暂停止操作鼠标和键盘后，自动把后打开的窗口合并到最早打开的窗口中，然后关闭它们。最早的窗口里已经打开的文件夹不会重复打开：如果新窗口里只有这些文件夹，就直接关闭新窗口，并在最早的窗口中切换到该文件夹。特意以单独窗口打开的窗口（按住 Ctrl+Shift 打开、拖出来的标签页）不会被合并。仅在“窗口转标签”开启时生效。</sys:String>
     <sys:String x:Key="Pref_AutoRestoreSession">自动恢复上次的标签页</sys:String>
     <sys:String x:Key="Pref_AutoRestoreSessionToolTip">记住打开的文件夹。重启电脑或重新登录后、资源管理器崩溃或重启后，自动把它们作为标签页重新打开在同一个窗口中。你自己关闭的窗口不会被自动重新打开，需要时可使用托盘菜单（或快捷键）中的“恢复上次的标签页”。已不存在的文件夹会被跳过，最多打开 30 个标签页。开启后取代“启动时询问是否恢复上次的窗口”（该选项会被隐藏）。</sys:String>
     <sys:String x:Key="Pref_HideTrayIcon">隐藏托盘图标</sys:String>
@@ -133,7 +133,7 @@
     <sys:String x:Key="HotKeyAction_SnapDown">贴靠到底部</sys:String>
     <sys:String x:Key="HotKeyAction_SnapDown_Desc">将当前窗口贴靠到屏幕底部。</sys:String>
     <sys:String x:Key="HotKeyAction_MergeWindows">合并所有窗口</sys:String>
-    <sys:String x:Key="HotKeyAction_MergeWindows_Desc">把所有资源管理器窗口合并到一个窗口中。</sys:String>
+    <sys:String x:Key="HotKeyAction_MergeWindows_Desc">把所有资源管理器窗口合并到最早打开的窗口中。</sys:String>
     <sys:String x:Key="HotKeyAction_RestoreSession">恢复上次的标签页</sys:String>
     <sys:String x:Key="HotKeyAction_RestoreSession_Desc">在一个窗口中重新打开上次的标签页。</sys:String>
     <sys:String x:Key="Tray_KeyboardHookToolTip">启用或禁用键盘快捷键</sys:String>
@@ -142,8 +142,8 @@
     <sys:String x:Key="Tray_WindowHookToolTip">开启或关闭：自动把新打开的资源管理器窗口转为标签页</sys:String>
     <sys:String x:Key="Tray_ReuseTabsToolTip">开启后，如果位置已在某个标签页中打开，就直接切换过去，而不是重复打开</sys:String>
     <sys:String x:Key="Tray_MergeWindows">立即合并所有窗口</sys:String>
-    <sys:String x:Key="Tray_MergeWindowsToolTip">把所有资源管理器窗口的标签页移到同一个窗口中</sys:String>
-    <sys:String x:Key="Merge_Done">已将 {0} 个窗口合并到一个窗口（移入 {1} 个标签页）。</sys:String>
+    <sys:String x:Key="Tray_MergeWindowsToolTip">把所有资源管理器窗口的标签页移到最早打开的窗口中，并关闭其他窗口</sys:String>
+    <sys:String x:Key="Merge_Done">已将 {0} 个窗口合并到最早打开的窗口（移入 {1} 个标签页，{2} 个已经打开的文件夹没有重复打开）。</sys:String>
     <sys:String x:Key="Merge_Nothing">没有需要合并的资源管理器窗口。</sys:String>
     <sys:String x:Key="Merge_Failed">有 {0} 个窗口中的部分标签页未能移动，这些窗口已保留、没有关闭，不会丢失任何内容。</sys:String>
     <sys:String x:Key="Tray_RestoreSession">恢复上次的标签页</sys:String>

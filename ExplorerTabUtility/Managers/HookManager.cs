@@ -60,11 +60,11 @@ public sealed class HookManager
         return Task.Run(() => _windowHook.RestoreLastSessionAsync());
     }
 
-    /// <summary>Merges all File Explorer windows into one (the foreground Explorer window, else the most recently used one).</summary>
-    public async Task<MergeResult> MergeWindowsNowAsync(nint preferredTarget = 0)
+    /// <summary>Merges all File Explorer windows into the first (oldest) one.</summary>
+    public async Task<MergeResult> MergeWindowsNowAsync()
     {
         // Explorer's COM objects live in the multithreaded apartment: run off the UI / hook thread.
-        var result = await Task.Run(() => _windowHook.MergeWindowsAsync(manual: true, preferredTarget));
+        var result = await Task.Run(() => _windowHook.MergeWindowsAsync(manual: true));
         _syncContext.Post(_ => OnWindowsMerged?.Invoke(result), null);
         return result;
     }
@@ -131,7 +131,7 @@ public sealed class HookManager
             case HotKeyAction.MergeWindows:
                 if (e.Profile.Delay > 0)
                     await Task.Delay(e.Profile.Delay);
-                await MergeWindowsNowAsync(e.ForegroundWindow);
+                await MergeWindowsNowAsync();
                 break;
 
             case HotKeyAction.RestoreSession:

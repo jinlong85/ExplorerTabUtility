@@ -342,7 +342,9 @@ public partial class ExplorerWatcher : IHook
     //  - never sends 0xA221 (tabs are only added with Ctrl+T, which always works on the window's own tab),
     //  - adds ONE tab at a time (under the same lock as every other "open tab" operation) and only continues after the
     //    new tab exists, is registered, has navigated to its folder and the window's tabs are consistent again,
-    //  - never brings windows to the front or simulates input when it runs automatically,
+    //  - keeps the first (oldest) window and moves the newer windows into it, without opening a folder twice,
+    //  - never brings windows to the front or simulates input when it runs automatically (except: when the window that is
+    //    closed was the window in front, the first window takes its place with the same folder, see ShowMergedTabAsync),
     //  - closes a source window only after ALL of its tabs were confirmed open in the target window.
     private const int AutoMergeIntervalMs = 1_000;
     private const int AutoMergeSettleMs = 1_500;   // the set of windows must be unchanged this long
@@ -362,6 +364,10 @@ public partial class ExplorerWatcher : IHook
     private readonly ConcurrentDictionary<nint, byte> _keepAsWindow = new();
     // Windows whose merge failed (window -> its tabs at that time). Not retried automatically until their tabs change.
     private readonly ConcurrentDictionary<nint, string> _mergeFailedWindows = new();
+    // When this app first saw each Explorer window (Stopwatch ticks). Merging keeps the OLDEST window ("the first window")
+    // and moves the newer windows into it. Windows that were already open when the shell objects were created get older
+    // times in ShellWindows (registration) order.
+    private readonly ConcurrentDictionary<nint, long> _windowFirstSeen = new();
     private readonly SemaphoreSlim _mergeLock = new(1);
     private Timer? _autoMergeTimer;
     private volatile bool _autoMergeEnabled;
@@ -379,6 +385,10 @@ public partial class ExplorerWatcher : IHook
     {
         public nint Handle { get; } = handle;
         public List<MergeTab> Tabs { get; } = [];
+        /// <summary>When this app first saw the window (smaller = older).</summary>
+        public long FirstSeen { get; set; }
+        /// <summary>Position of the window's first tab in ShellWindows (tie breaker).</summary>
+        public int FirstRegistration { get; set; } = int.MaxValue;
         public int TabWindowCount { get; set; }
         public bool HasUnsupportedTab { get; set; }
         /// <summary>Every tab window has a registered tab object (no tab is still being created or closed).</summary>
@@ -403,11 +413,16 @@ public partial class ExplorerWatcher : IHook
     }
 
     /// <summary>
-    /// Merges the normal File Explorer windows into one window.
+    /// Merges the normal File Explorer windows into one window: the FIRST (oldest) window stays, the newer windows are moved
+    /// into it and closed. A tab whose folder is already open in the first window is not opened a second time (automatic
+    /// merge: always; manual merge: when "Reuse Tabs" is on), so a new window that only shows folders that are already open
+    /// is simply closed.
     /// <paramref name="manual"/> (tray menu / shortcut): all windows, including the ones kept on purpose; the result window is brought to the front.
-    /// Automatic: windows the user opened as separate windows on purpose and windows that failed before are skipped, nothing is activated.
+    /// Automatic: windows the user opened as separate windows on purpose and windows that failed before are skipped. Nothing is
+    /// activated, except when the window that is closed was the window in front: then the first window comes to the front
+    /// with the same folder (and selection) instead.
     /// </summary>
-    public async Task<MergeResult> MergeWindowsAsync(bool manual, nint preferredTarget = 0)
+    public async Task<MergeResult> MergeWindowsAsync(bool manual)
     {
         var result = new MergeResult();
         if (_shellWindows == null || _mainExplorerProcessId == 0) return result;
@@ -430,11 +445,12 @@ public partial class ExplorerWatcher : IHook
                 .ToList();
             if (candidates.Count < 2) return result;
 
-            // Target: the foreground Explorer window, else the most recently used one (windows are in Z-order).
-            if (preferredTarget == 0) preferredTarget = WinApi.GetForegroundWindow();
-            var target = candidates.FirstOrDefault(w => w.Handle == preferredTarget && w.CanBeMerged)
-                         ?? candidates.FirstOrDefault(w => w.CanBeMerged);
-            if (target == null) return result;
+            // Target: the first (oldest) window; candidates are sorted oldest first. Control Panel style windows are never a target.
+            // If the first window is still busy (a tab is being created/closed), an automatic merge waits for the next round instead
+            // of merging the first window into a newer one.
+            var target = candidates.FirstOrDefault(w => !w.HasUnsupportedTab);
+            if (target is { CanBeMerged: false } && manual) target = candidates.FirstOrDefault(w => w.CanBeMerged);
+            if (target is not { CanBeMerged: true }) return result;
 
             var sources = candidates.Where(w => w != target && w.CanBeMerged).ToList();
             if (sources.Count == 0) return result;
@@ -447,12 +463,20 @@ public partial class ExplorerWatcher : IHook
                 // Automatic merge: stop (between windows) as soon as the user does something.
                 if (!manual && WinApi.GetUserIdleTimeMs() < (uint)(Environment.TickCount - startTick)) break;
 
+                // The tab the user sees in this window (to show the same folder in the first window if this window was in front).
+                var activeTab = GetActiveMergeTab(source);
+
                 var allOpened = true;
+                var skipped = 0;
                 foreach (var tab in source.Tabs)
                 {
-                    // Reuse tabs: a folder that is already open in the target window is not opened a second time.
-                    if (_reuseTabs && targetLocations.Any(l => IsSameLocation(l, tab.Location)))
+                    // A folder that is already open in the first window (or was just moved there) is not opened a second time.
+                    // Automatic merges always do this; a manual merge follows "Reuse Tabs".
+                    if ((!manual || _reuseTabs) && targetLocations.Any(l => IsSameLocation(l, tab.Location)))
+                    {
+                        skipped++;
                         continue;
+                    }
 
                     if (!await OpenTabForMergeAsync(target.Handle, tab.Location, tab.SelectedItems))
                     {
@@ -465,6 +489,7 @@ public partial class ExplorerWatcher : IHook
                 }
 
                 // Only close the window when everything it showed is open in the target window, and it didn't change meanwhile.
+                var wasInFront = WinApi.GetForegroundWindow() == source.Handle;
                 if (!allOpened || GetCurrentSignature(source.Handle) != source.Signature || !await CloseWindowForMergeAsync(source.Handle))
                 {
                     _mergeFailedWindows[source.Handle] = source.Signature;
@@ -474,7 +499,14 @@ public partial class ExplorerWatcher : IHook
 
                 RemoveClosedRecords(source.Handle, startTick);
                 _keepAsWindow.TryRemove(source.Handle, out _);
+                _windowFirstSeen.TryRemove(source.Handle, out _);
                 result.MergedWindows++;
+                result.SkippedTabs += skipped;
+
+                // The user was looking at the window that is gone now: show the same folder in the first window instead
+                // (switching tabs only through the guarded path, see SelectTabByHandle).
+                if (wasInFront && activeTab != null)
+                    await ShowMergedTabAsync(target.Handle, activeTab);
             }
 
             if (result.MergedWindows > 0)
@@ -580,7 +612,7 @@ public partial class ExplorerWatcher : IHook
                WinApi.FindWindowEx(hWnd, 0, "ShellTabWindowClass", null) != 0;
     }
 
-    /// <summary>The normal Explorer windows (most recently used first) with their tabs in the order Explorer registered them.</summary>
+    /// <summary>The normal Explorer windows (oldest first, see <see cref="_windowFirstSeen"/>) with their tabs in the order Explorer registered them.</summary>
     private List<MergeWindow> GetMergeWindows()
     {
         var windows = Helper.GetAllExplorerWindows()
@@ -590,9 +622,12 @@ public partial class ExplorerWatcher : IHook
         if (windows.Count < 2) return windows;
 
         var byHandle = windows.ToDictionary(w => w.Handle);
+        var registration = 0;
         foreach (var (tab, frame) in GetRegisteredTabs())
         {
+            registration++;
             if (!byHandle.TryGetValue(frame, out var window)) continue;
+            if (window.FirstRegistration == int.MaxValue) window.FirstRegistration = registration;
 
             string location;
             try { location = GetLocation(tab); }
@@ -605,9 +640,69 @@ public partial class ExplorerWatcher : IHook
         }
 
         foreach (var window in windows)
+        {
             window.TabWindowCount = Helper.GetAllExplorerTabs(window.Handle).Count();
+            // A window this app has not seen yet (it slipped past the window hook) is the newest one.
+            window.FirstSeen = _windowFirstSeen.GetOrAdd(window.Handle, _ => Stopwatch.GetTimestamp());
+        }
 
-        return windows;
+        return windows
+            .OrderBy(w => w.FirstSeen)
+            .ThenBy(w => w.FirstRegistration)
+            .ToList();
+    }
+
+    /// <summary>Remember when this app saw <paramref name="hWnd"/> for the first time (see <see cref="_windowFirstSeen"/>).</summary>
+    private void NoteWindowSeen(nint hWnd)
+    {
+        if (hWnd != 0) _windowFirstSeen.TryAdd(hWnd, Stopwatch.GetTimestamp());
+    }
+
+    /// <summary>The merge tab that is the visible (active) tab of <paramref name="window"/>, if it can be found.</summary>
+    private MergeTab? GetActiveMergeTab(MergeWindow window)
+    {
+        try
+        {
+            var activeTab = GetWindowByTabHandle(GetActiveTabHandle(window.Handle));
+            if (activeTab == null) return window.Tabs.Count == 1 ? window.Tabs[0] : null;
+
+            var location = GetLocation(activeTab);
+            return window.Tabs.FirstOrDefault(t => IsSameLocation(t.Location, location));
+        }
+        catch
+        {
+            return window.Tabs.Count == 1 ? window.Tabs[0] : null;
+        }
+    }
+
+    /// <summary>
+    /// Brings <paramref name="window"/> to the front with the tab that shows <paramref name="tab"/>'s folder and selects the
+    /// items that were selected there. Uses the guarded tab switch (<see cref="ActivateTabAsync"/> / <see cref="SelectTabByHandle"/>).
+    /// </summary>
+    private async Task ShowMergedTabAsync(nint window, MergeTab tab)
+    {
+        try
+        {
+            if (!Helper.IsFileExplorerWindow(window)) return;
+
+            foreach (var (registeredTab, frame) in GetRegisteredTabs())
+            {
+                if (frame != window || !IsTabAt(registeredTab, tab.Location)) continue;
+
+                var tabHandle = await GetTabHandle(registeredTab);
+                if (tabHandle == 0) break;
+
+                await ActivateTabAsync(tabHandle, tab.SelectedItems);
+                return;
+            }
+
+            // The tab could not be found (e.g. it was closed meanwhile): at least show the first window.
+            WinApi.RestoreWindowToForeground(window);
+        }
+        catch
+        {
+            // Showing the tab is a nice-to-have.
+        }
     }
 
     /// <summary>All registered Explorer tabs with the handle of the window that hosts them, in registration order.</summary>
@@ -821,6 +916,10 @@ public partial class ExplorerWatcher : IHook
 
         foreach (var hWnd in _mergeFailedWindows.Keys)
             if (!Helper.IsFileExplorerWindow(hWnd)) _mergeFailedWindows.TryRemove(hWnd, out _);
+
+        // Window handles get reused: forget windows that are gone.
+        foreach (var hWnd in _windowFirstSeen.Keys)
+            if (!Helper.IsFileExplorerWindow(hWnd)) _windowFirstSeen.TryRemove(hWnd, out _);
     }
 
     /// <summary>Remember that the user opened <paramref name="hWnd"/> as a separate window on purpose.</summary>
@@ -900,6 +999,7 @@ public partial class ExplorerWatcher : IHook
             _ = GetTabHandle(window);
 
             hWnd = new IntPtr(window.HWND);
+            NoteWindowSeen(hWnd);
             
             if (shouldOpenAsWindow)
             {
@@ -1818,11 +1918,16 @@ public partial class ExplorerWatcher : IHook
         // Hook the event handlers for already-open windows
         var hasOpen = false;
         var count = _shellWindows.Count;
+        var seenTicks = Stopwatch.GetTimestamp();
         for (var i = 0; i < count; i++)
         {
             if (_shellWindows.Item(i) is not InternetExplorer window)
                 continue;
             hasOpen = true;
+
+            // Already open: older than anything opened from now on, in registration order (the window of the first tab is the oldest).
+            try { _windowFirstSeen.TryAdd(new IntPtr(window.HWND), seenTicks - (count - i)); }
+            catch { /* closed meanwhile */ }
 
             var windowInfo = new WindowInfo();
             _windowEntryDict.Add(window, windowInfo);
@@ -1864,6 +1969,7 @@ public partial class ExplorerWatcher : IHook
             Marshal.ReleaseComObject(window);
         }
         _windowEntryDict.Clear();
+        _windowFirstSeen.Clear();
 
         // Release the ShellWindows COM object
         Marshal.ReleaseComObject(_shellWindows);
