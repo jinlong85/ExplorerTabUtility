@@ -626,7 +626,7 @@ public partial class ExplorerWatcher : IHook
                 try
                 {
                     if (_shellWindows.Item(i) is not InternetExplorer tab) continue;
-                    var frame = new IntPtr(tab.HWND);
+                    nint frame = tab.HWND;
                     if (frame == 0) continue; // an entry without a window
                     result.Add((tab, frame));
                 }
